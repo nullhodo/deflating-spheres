@@ -607,89 +607,147 @@ export const DEFAULT_SKETCH_PARAMETERS: SketchParameters = {
   randomSeedValue: 12345,
 
   // Deflating Spheres Core Parameters
-  centerRadius: 110,
+  // 中心円の基本半径
+  centerRadius: 70,
+  // 脈動の振幅強度
   pulseIntensity: 0,
+  // 脈動の速度
   pulseSpeed: 0.045,
-  emissionIntervalFrames: 60,
-  emissionJitterFactor: 0.35,
+  // 放出頻度 (フレーム間隔)
+  emissionIntervalFrames: 90,
+  // 放出間隔のゆらぎ (Jitter)
+  emissionJitterFactor: 0.6,
+  // 発射初速
   initialVelocity: 5.7,
 
+  // 収縮レート (空気抜け速度)
   deflationRate: 0.011,
+  // 蛇行のうねり強度
   wanderStrength: 0.9,
+  // 有機的揺らぎの周波数
   harmonicFrequency: 0.035,
+  // ノイズ平滑度 (慣性制御)
   smoothingFactor: 0.99,
+  // 軌跡の描画履歴長
   trailHistoryLength: 100,
+  // 不透明度 (ソリッド度)
   circleOpacity: 1.0,
 
-  // Distinct child color option (default true)
+  // 放出円の色を親円と別色にする
   distinctChildColor: true,
 
-  // Organic parent growth & deflate shrinkage (default true)
+  // ベース円の有機的成長・放出縮小
   enableOrganicParentGrowth: true,
+  // 吸気・膨張速度
   parentGrowthRate: 0.15,
+  // 放出時の縮小係数
   deflationShrinkFactor: 0.25,
+  // 放出縮小の所要時間 (基準: 1.0)
   deflationDurationFactor: 1.4,
+  // 収縮開始のタイミング
   deflationTriggerTiming: 0.7,
 
-  // Opt-in Visual Effects (Default OFF)
+  // 呼吸・脈動エフェクト
   enableBreathingPulse: false,
+  // 反射・光沢ハイライト
   enableReflectionHighlight: false,
+  // ボケ光量・グローエフェクト
   enableGlowBokeh: false,
+  // フチ (外周輪郭線) 描画
   enableBorderOutline: false,
+  // 母体円の中心点描画
   enableCenterCoreDot: false,
 
-  // Color Modes
+  // 単色モード
   useSingleColorMode: false,
+  // 単色カラー値
   singleColorValue: "#38bdf8",
+  // グラデーションテーマ
   useGradientTheme: false,
+  // グラデーション基準色
   gradientBaseColor: "#38bdf8",
+  // 背景色 (パレット基準インデックス)
   backgroundColorIndex: 7,
+  // 手動背景色
   manualBackgroundColor: "#121316",
 
-  // Custom demo parameters
+  // シェイプ数 (互換用)
   shapeCount: 16,
+  // シェイプサイズ (互換用)
   shapeSize: 60,
+  // シェイプ複雑度 (互換用)
   shapeComplexity: 6,
+  // アニメーション速度 (互換用)
   animationSpeed: 1.0,
+  // シェイプタイプ (互換用)
   shapeType: "flower",
 
+  // トランジション種類
   transitionType: "none",
+  // トランジション時間 (ms)
   transitionDurationMs: 600,
 
+  // グレインノイズ表示
   showGrain: true,
+  // グレイン強度
   grainIntensity: 0.15,
 
+  // リソグラフ表示
   showRiso: false,
+  // リソグラフオフセット (px)
   risoOffsetPx: 3,
+  // リソグラフ強度
   risoIntensity: 0.7,
 
+  // ハーフトーン表示
   showHalftone: false,
+  // ハーフトーンサイズ
   halftoneSize: 6,
+  // ハーフトーン角度
   halftoneAngle: 45,
 
+  // ディザリング表示
   showDithering: false,
+  // ディザリングスケール
   ditheringScale: 2,
+  // ディザリング階調数
   ditheringLevels: 4,
 
+  // インク滲み表示
   showInkBleed: false,
+  // インク滲み量
   inkBleedAmount: 2.5,
+  // インク滲み粗さ
   inkBleedRoughness: 0.4,
 
+  // 和紙テクスチャ表示
   showPaperTexture: false,
+  // 和紙粗さ
   paperRoughness: 0.25,
+  // 和紙濃度
   paperColorDensity: 0.15,
 
+  // CMYK独立版ズレ表示
   showCmyk: false,
+  // CMYKズレ係数
   cmykOffsetFactor: 3,
+  // CMYK強度
   cmykIntensity: 0.8,
 
+  // ビネット表示
   showVignette: false,
+  // ビネット強度
   vignetteIntensity: 0.45,
+  // ビネット半径
   vignetteRadius: 0.5,
 
+  // 周辺ぼかし表示
   showPeripheralBlur: false,
+  // 周辺ぼかし量
   peripheralBlurAmount: 6,
+  // 周辺ぼかし半径
   peripheralBlurRadius: 0.4,
 
+  // デバッグモード
   debugMode: false,
 };
