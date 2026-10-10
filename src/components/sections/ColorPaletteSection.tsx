@@ -262,14 +262,14 @@ export const ColorPaletteSection: React.FC<Props> = ({
               const val = Number(e.target.value);
               onParamChange("backgroundColorIndex", val);
               if (val >= 0 && currentPalette.colors[val]) {
-                onParamChange(
-                  "backgroundColor",
-                  currentPalette.colors[val].hex,
-                );
+                const hex = currentPalette.colors[val].hex;
+                onParamChange("backgroundColor", hex);
+                onParamChange("manualBackgroundColor", hex);
               }
             }}
             className="w-full h-7 bg-white rounded border border-gray-300 text-xs px-1 cursor-pointer"
           >
+            <option value={-1}>手動カスタム ({resolvedBg})</option>
             {currentPalette.colors.map((c, idx) => (
               <option key={c.hex} value={idx}>
                 {c.name} ({c.hex})
@@ -291,8 +291,10 @@ export const ColorPaletteSection: React.FC<Props> = ({
             value={resolvedBg}
             className="w-full h-7 rounded border border-gray-300 bg-white cursor-pointer"
             onChange={(e) => {
-              onParamChange("manualBackgroundColor", e.target.value);
-              onParamChange("backgroundColor", e.target.value);
+              const newColor = e.target.value;
+              onParamChange("backgroundColorIndex", -1);
+              onParamChange("manualBackgroundColor", newColor);
+              onParamChange("backgroundColor", newColor);
             }}
           />
         </div>
@@ -383,6 +385,14 @@ export const ColorPaletteSection: React.FC<Props> = ({
                 // 三原色システムON時は縮小係数を0、不透明度を0.7 (透過混色) に設定
                 onParamChange("deflationShrinkFactor", 0);
                 onParamChange("circleOpacity", 0.7);
+                // 光の三原色なら黒背景、色の三原色なら白背景に自動設定
+                const targetBg =
+                  params.colorMixingMode === "cmy_subtractive"
+                    ? "#ffffff"
+                    : "#0a0a0c";
+                onParamChange("backgroundColorIndex", -1);
+                onParamChange("manualBackgroundColor", targetBg);
+                onParamChange("backgroundColor", targetBg);
               }
             }}
             className="rounded text-indigo-600 focus:ring-0 w-3.5 h-3.5 cursor-pointer"
@@ -399,9 +409,13 @@ export const ColorPaletteSection: React.FC<Props> = ({
               <div className="grid grid-cols-2 gap-1.5">
                 <button
                   type="button"
-                  onClick={() =>
-                    onParamChange("colorMixingMode", "rgb_additive")
-                  }
+                  onClick={() => {
+                    onParamChange("colorMixingMode", "rgb_additive");
+                    // 光の三原色は黒背景に自動設定
+                    onParamChange("backgroundColorIndex", -1);
+                    onParamChange("manualBackgroundColor", "#0a0a0c");
+                    onParamChange("backgroundColor", "#0a0a0c");
+                  }}
                   className={`py-1 px-2 rounded text-[11px] font-medium border text-center transition cursor-pointer ${
                     params.colorMixingMode === "rgb_additive"
                       ? "bg-white border-indigo-500 text-indigo-700 shadow-xs"
@@ -412,9 +426,13 @@ export const ColorPaletteSection: React.FC<Props> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    onParamChange("colorMixingMode", "cmy_subtractive")
-                  }
+                  onClick={() => {
+                    onParamChange("colorMixingMode", "cmy_subtractive");
+                    // 色の三原色は白背景に自動設定
+                    onParamChange("backgroundColorIndex", -1);
+                    onParamChange("manualBackgroundColor", "#ffffff");
+                    onParamChange("backgroundColor", "#ffffff");
+                  }}
                   className={`py-1 px-2 rounded text-[11px] font-medium border text-center transition cursor-pointer ${
                     params.colorMixingMode === "cmy_subtractive"
                       ? "bg-white border-indigo-500 text-indigo-700 shadow-xs"

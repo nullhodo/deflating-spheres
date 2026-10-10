@@ -94,6 +94,13 @@ export function getResolvedBackgroundColorHex(
   params: SketchParameters,
   palettes: Palette[],
 ): string {
+  // 手動指定モード (backgroundColorIndex === -1) の場合は手動色を最優先
+  if (params.backgroundColorIndex === -1) {
+    return (
+      params.manualBackgroundColor || params.backgroundColor || "#121316"
+    );
+  }
+
   const colorList = getCurrentActiveColorList(params, palettes);
   const backgroundIndex = params.backgroundColorIndex;
   if (
