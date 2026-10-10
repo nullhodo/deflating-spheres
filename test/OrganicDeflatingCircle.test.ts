@@ -147,4 +147,38 @@ describe("OrganicDeflatingCircle", () => {
 
     expect(circle.positionHistory.length).toBe(5);
   });
+
+  it("keeps trail alive and dissipates gracefully after head deflation", () => {
+    const params = createMockParams({
+      deflationRate: 0.1,
+      trailHistoryLength: 10,
+    });
+    const circle = new OrganicDeflatingCircle(0, 0, 5.0, 0, 1.0, {
+      name: "Test",
+      hex: "#ffffff",
+      rgb: [255, 255, 255],
+    });
+
+    // Advance 5 frames to build trail history
+    for (let i = 0; i < 5; i++) {
+      circle.updateSimulationState(params, () => 0.5);
+    }
+    expect(circle.positionHistory.length).toBeGreaterThan(1);
+    expect(circle.isHeadDeflated).toBe(false);
+
+    // Force radius below threshold to trigger head deflation
+    circle.currentRadius = 1.0;
+    circle.updateSimulationState(params, () => 0.5);
+
+    // Head is now deflated, but entire circle is NOT deflated yet because trail is dissipating
+    expect(circle.isHeadDeflated).toBe(true);
+    expect(circle.isDeflated).toBe(false);
+
+    // Run until trail fully dissipates
+    for (let i = 0; i < 50; i++) {
+      circle.updateSimulationState(params, () => 0.5);
+      if (circle.isDeflated) break;
+    }
+    expect(circle.isDeflated).toBe(true);
+  });
 });

@@ -29,6 +29,8 @@ export class OrganicDeflatingCircle {
   public positionHistory: PositionRecord[];
   public lifespanFrames: number;
   public isDeflated: boolean;
+  public isHeadDeflated: boolean;
+  public trailFadeAlpha: number;
   public hasTriggeredParentDeflation: boolean;
 
   constructor(
@@ -57,6 +59,8 @@ export class OrganicDeflatingCircle {
     this.positionHistory = [];
     this.lifespanFrames = 0;
     this.isDeflated = false;
+    this.isHeadDeflated = false;
+    this.trailFadeAlpha = 1.0;
     this.hasTriggeredParentDeflation = false;
   }
 
@@ -69,11 +73,45 @@ export class OrganicDeflatingCircle {
   ): void {
     this.lifespanFrames++;
 
+    // フェーズ 2: 円本体（ヘッド）が縮小・消滅した後のトレイル残存・自然消散処理
+    if (this.isHeadDeflated) {
+      // 尾っぽが流れて消えていくよう、古い履歴を順次消化
+      const shrinkSteps = Math.max(
+        1,
+        Math.ceil(this.positionHistory.length * 0.035),
+      );
+      for (
+        let s = 0;
+        s < shrinkSteps && this.positionHistory.length > 0;
+        s++
+      ) {
+        this.positionHistory.shift();
+      }
+
+      // トレイル透明度を滑らかにフェードアウト
+      this.trailFadeAlpha = Math.max(0, this.trailFadeAlpha - 0.025);
+
+      // トレイルの描画点が尽きたか透明度がゼロになったら完全消滅
+      if (
+        this.positionHistory.length <= 1 ||
+        this.trailFadeAlpha <= 0.01
+      ) {
+        this.isDeflated = true;
+      }
+      return;
+    }
+
+    // フェーズ 1: 円本体（ヘッド）の通常の収縮と物理移動
     const shrinkFactor = 1.0 - parameters.deflationRate;
     this.currentRadius *= shrinkFactor;
 
+    // 半径が極小になったら、ヘッド（円本体）のみ消滅させてトレイル消散フェーズへ移行
     if (this.currentRadius < 1.2) {
-      this.isDeflated = true;
+      this.isHeadDeflated = true;
+      this.currentRadius = 0;
+      if (this.positionHistory.length <= 1) {
+        this.isDeflated = true;
+      }
       return;
     }
 
@@ -151,8 +189,8 @@ export class OrganicDeflatingCircle {
     const blueComponent = rgbValues[2];
     const opacityMultiplier = parameters.circleOpacity;
 
-    // 1. 軌跡ラインの描画
-    if (this.positionHistory.length > 1) {
+    // 1. 軌跡ラインの描画 (トレイルが自然にフェードアウトして消散)
+    if (this.positionHistory.length > 1 && this.trailFadeAlpha > 0.01) {
       target.noFill();
       for (
         let historyIndex = 1;
@@ -167,7 +205,7 @@ export class OrganicDeflatingCircle {
           redComponent,
           greenComponent,
           blueComponent,
-          progressRatio * 140 * opacityMultiplier,
+          progressRatio * 140 * opacityMultiplier * this.trailFadeAlpha,
         );
         target.strokeWeight(
           Math.max(
@@ -187,56 +225,60 @@ export class OrganicDeflatingCircle {
       }
     }
 
-    const drawRadius = this.currentRadius * scaleMultiplier;
     const drawPositionX = this.currentPositionX * scaleMultiplier;
     const drawPositionY = this.currentPositionY * scaleMultiplier;
 
-    // 2. ボケ光量・グローエフェクト (Opt-in)
-    if (parameters.enableGlowBokeh) {
+    // 2. 円本体（ヘッド）の描画（ヘッドが健在な間のみ描画）
+    if (!this.isHeadDeflated && this.currentRadius > 0.5) {
+      const drawRadius = this.currentRadius * scaleMultiplier;
+
+      // ボケ光量・グローエフェクト (Opt-in)
+      if (parameters.enableGlowBokeh) {
+        target.noStroke();
+        target.fill(
+          redComponent,
+          greenComponent,
+          blueComponent,
+          24 * opacityMultiplier,
+        );
+        target.circle(
+          drawPositionX,
+          drawPositionY,
+          (drawRadius + 14 * scaleMultiplier) * 2,
+        );
+      }
+
+      // 風船（円本体）のソリッド描画
       target.noStroke();
       target.fill(
         redComponent,
         greenComponent,
         blueComponent,
-        24 * opacityMultiplier,
+        Math.round(255 * opacityMultiplier),
       );
-      target.circle(
-        drawPositionX,
-        drawPositionY,
-        (drawRadius + 14 * scaleMultiplier) * 2,
-      );
-    }
-
-    // 3. 風船（円本体）のソリッド描画
-    target.noStroke();
-    target.fill(
-      redComponent,
-      greenComponent,
-      blueComponent,
-      Math.round(255 * opacityMultiplier),
-    );
-    target.circle(drawPositionX, drawPositionY, drawRadius * 2);
-
-    // 4. 反射ハイライトエフェクト (Opt-in)
-    if (parameters.enableReflectionHighlight) {
-      target.fill(255, 255, 255, 95 * opacityMultiplier);
-      target.circle(
-        drawPositionX - drawRadius * 0.28,
-        drawPositionY - drawRadius * 0.28,
-        drawRadius * 0.5,
-      );
-    }
-
-    // 5. 外周輪郭線 (Opt-in)
-    if (parameters.enableBorderOutline) {
-      target.noFill();
-      target.stroke(255, 255, 255, 160 * opacityMultiplier);
-      target.strokeWeight(Math.max(1, 1.5 * scaleMultiplier));
       target.circle(drawPositionX, drawPositionY, drawRadius * 2);
+
+      // 反射ハイライトエフェクト (Opt-in)
+      if (parameters.enableReflectionHighlight) {
+        target.fill(255, 255, 255, 95 * opacityMultiplier);
+        target.circle(
+          drawPositionX - drawRadius * 0.28,
+          drawPositionY - drawRadius * 0.28,
+          drawRadius * 0.5,
+        );
+      }
+
+      // 外周輪郭線 (Opt-in)
+      if (parameters.enableBorderOutline) {
+        target.noFill();
+        target.stroke(255, 255, 255, 160 * opacityMultiplier);
+        target.strokeWeight(Math.max(1, 1.5 * scaleMultiplier));
+        target.circle(drawPositionX, drawPositionY, drawRadius * 2);
+      }
     }
 
     // 6. デバッグ表示
-    if (parameters.debugMode) {
+    if (parameters.debugMode && !this.isHeadDeflated) {
       target.stroke(255, 60, 60, 200);
       target.strokeWeight(2);
       target.line(
