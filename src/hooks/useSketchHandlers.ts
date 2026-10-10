@@ -87,10 +87,12 @@ export function useSketchHandlers(
       const next: SketchParameters = {
         ...prev,
         paletteIndex,
+        paletteShuffledColors: null,
         useSingleColorMode: false,
         useGradientTheme: false,
-        backgroundColorIndex: 0,
-        backgroundColor: colors[0]?.hex || "#FFFFFF",
+        backgroundColorIndex: paletteIndex === 16 ? 7 : 0,
+        backgroundColor:
+          colors[paletteIndex === 16 ? 7 : 0]?.hex || "#FFFFFF",
         primaryColor: colors[1]?.hex || "#000000",
         secondaryColor: colors[2]?.hex || colors[1]?.hex || "#888888",
         accentColor: colors[3]?.hex || colors[0]?.hex || "#FF0055",
@@ -107,13 +109,22 @@ export function useSketchHandlers(
 
   const handleShufflePaletteColors = () => {
     const pal = PALETTES[params.paletteIndex] || PALETTES[0];
-    const shuffled = [...pal.colors].sort(() => Math.random() - 0.5);
+    const baseColors =
+      params.paletteShuffledColors &&
+      params.paletteShuffledColors.length > 0
+        ? [...params.paletteShuffledColors]
+        : [...pal.colors];
+    const shuffled = [...baseColors].sort(() => Math.random() - 0.5);
 
     setParams((prev) => {
       const next: SketchParameters = {
         ...prev,
+        useSingleColorMode: false,
+        useGradientTheme: false,
+        paletteShuffledColors: shuffled,
+        backgroundColorIndex: 0,
         backgroundColor: shuffled[0]?.hex || "#FFFFFF",
-        primaryColor: shuffled[1]?.hex || "#000000",
+        primaryColor: shuffled[1]?.hex || shuffled[0]?.hex || "#000000",
         secondaryColor: shuffled[2]?.hex || shuffled[1]?.hex || "#888888",
         accentColor: shuffled[3]?.hex || shuffled[0]?.hex || "#FF0055",
       };

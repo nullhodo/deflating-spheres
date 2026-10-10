@@ -603,6 +603,7 @@ export const DEFAULT_SKETCH_PARAMETERS: SketchParameters = {
   secondaryColor: PALETTES[16].colors[1]?.hex || "#D89F08",
   accentColor: PALETTES[16].colors[2]?.hex || "#2D8C84",
   paletteIndex: 16,
+  paletteShuffledColors: null,
   randomSeedValue: 12345,
 
   // Deflating Spheres Core Parameters

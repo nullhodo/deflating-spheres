@@ -30,6 +30,7 @@ export interface SketchParameters {
   secondaryColor: string;
   accentColor: string;
   paletteIndex: number;
+  paletteShuffledColors: ColorItem[] | null;
   randomSeedValue: number;
 
   // Deflating Spheres Parameters

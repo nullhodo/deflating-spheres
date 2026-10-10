@@ -48,6 +48,9 @@ export function buildRandomizedParameters(
 
     if (targets.paletteShuffle) {
       colors = colors.sort(() => Math.random() - 0.5);
+      next.paletteShuffledColors = colors;
+    } else {
+      next.paletteShuffledColors = null;
     }
 
     next.backgroundColor = colors[0]?.hex || "#FFFFFF";
@@ -57,6 +60,16 @@ export function buildRandomizedParameters(
 
     // Randomize background color index within palette
     next.backgroundColorIndex = randInt(0, colors.length - 1);
+  } else if (targets.paletteShuffle) {
+    const pal = PALETTES[next.paletteIndex] || PALETTES[0];
+    const baseColors =
+      next.paletteShuffledColors && next.paletteShuffledColors.length > 0
+        ? [...next.paletteShuffledColors]
+        : [...pal.colors];
+    const shuffled = [...baseColors].sort(() => Math.random() - 0.5);
+    next.paletteShuffledColors = shuffled;
+    next.backgroundColor = shuffled[0]?.hex || "#FFFFFF";
+    next.backgroundColorIndex = 0;
   }
 
   // Deflating Spheres: Center Radius

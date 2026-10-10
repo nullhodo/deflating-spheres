@@ -27,6 +27,7 @@ const createParams = (
     secondaryColor: "#d89f08",
     accentColor: "#2d8c84",
     paletteIndex: 0,
+    paletteShuffledColors: null,
     randomSeedValue: 12345,
     centerRadius: 100,
     pulseIntensity: 0,

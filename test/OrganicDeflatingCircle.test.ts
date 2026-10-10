@@ -13,6 +13,7 @@ const createMockParams = (
     secondaryColor: "#818cf8",
     accentColor: "#f43f5e",
     paletteIndex: 0,
+    paletteShuffledColors: null,
     randomSeedValue: 12345,
     centerRadius: 110,
     pulseIntensity: 0,

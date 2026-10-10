@@ -30,6 +30,7 @@ const createMockParams = (
     secondaryColor: "#ff0000",
     accentColor: "#ffff00",
     paletteIndex: 0,
+    paletteShuffledColors: null,
     randomSeedValue: 12345,
     centerRadius: 110,
     pulseIntensity: 0,
@@ -145,5 +146,32 @@ describe("colorUtils", () => {
       false,
     );
     expect(available.length).toBe(2);
+  });
+
+  it("prioritizes paletteShuffledColors when present", () => {
+    const shuffledCustom = [
+      {
+        name: "Yellow",
+        hex: "#ffff00",
+        rgb: [255, 255, 0] as [number, number, number],
+      },
+      {
+        name: "Red",
+        hex: "#ff0000",
+        rgb: [255, 0, 0] as [number, number, number],
+      },
+      {
+        name: "Blue",
+        hex: "#0000ff",
+        rgb: [0, 0, 255] as [number, number, number],
+      },
+    ];
+    const params = createMockParams({
+      paletteIndex: 0,
+      paletteShuffledColors: shuffledCustom,
+    });
+    const colors = getCurrentActiveColorList(params, mockPalettes);
+    expect(colors).toEqual(shuffledCustom);
+    expect(colors[0].hex).toBe("#ffff00");
   });
 });

@@ -72,6 +72,14 @@ export function getCurrentActiveColorList(
     return generateGradientThemePalette(params.gradientBaseColor, 6);
   }
 
+  // シャッフルされたパレット色が設定されている場合はそれを最優先
+  if (
+    params.paletteShuffledColors &&
+    params.paletteShuffledColors.length > 0
+  ) {
+    return params.paletteShuffledColors;
+  }
+
   const selectedPalette = palettes[params.paletteIndex];
   if (selectedPalette && selectedPalette.colors.length > 0) {
     return selectedPalette.colors;
