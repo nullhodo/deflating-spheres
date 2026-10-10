@@ -9,12 +9,13 @@ interface SimulationStats {
 }
 
 /**
- * 0〜360度の全色相からランダムに鮮やかで美しいスペクトル光/色を生成
+ * 0〜360度の全色相からランダムに美しく上品なスペクトル光/色を生成
  */
 function generateRandomSpectrumColor(): ColorItem {
   const hue = Math.random() * 360;
-  const saturation = 0.88 + Math.random() * 0.12;
-  const value = 0.95 + Math.random() * 0.05;
+  // 目に優しい上品で澄んだ彩度 (68%〜82%) と明るさ (90%〜96%)
+  const saturation = 0.68 + Math.random() * 0.14;
+  const value = 0.90 + Math.random() * 0.06;
 
   const c = value * saturation;
   const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
