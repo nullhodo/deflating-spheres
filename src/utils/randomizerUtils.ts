@@ -85,6 +85,17 @@ export function buildRandomizedParameters(
     next.trailHistoryLength = randInt(12, 60);
   }
 
+  if (targets.distinctChildColor) {
+    next.distinctChildColor = Math.random() > 0.15;
+  }
+
+  if (targets.organicParentGrowth) {
+    next.enableOrganicParentGrowth = Math.random() > 0.1;
+    next.parentGrowthRate = Number(randRange(0.1, 0.45).toFixed(2));
+    next.deflationShrinkFactor = Number(randRange(0.1, 0.35).toFixed(2));
+    next.deflationDurationFactor = Number(randRange(0.6, 2.0).toFixed(2));
+  }
+
   // Deflating Spheres: Opt-in Effects
   if (targets.effects) {
     next.enableBreathingPulse = Math.random() > 0.6;

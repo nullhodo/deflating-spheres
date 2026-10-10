@@ -263,6 +263,117 @@ export const CustomParametersSection: React.FC<Props> = ({
             className="w-full accent-sky-600 h-1.5 bg-gray-200 rounded-lg cursor-pointer"
           />
         </div>
+
+        {/* 出ていく円はベース円と違う色にする */}
+        <label className="flex items-center justify-between bg-sky-500/10 hover:bg-sky-500/20 p-2 rounded-md border border-sky-500/30 cursor-pointer transition">
+          <span className="text-[11px] text-sky-950 font-medium">
+            放出円の色を親円と別色にする
+          </span>
+          <input
+            type="checkbox"
+            checked={params.distinctChildColor}
+            onChange={(e) =>
+              onParamChange("distinctChildColor", e.target.checked)
+            }
+            className="rounded text-sky-600 focus:ring-0 w-4 h-4 cursor-pointer"
+          />
+        </label>
+
+        {/* ベース円の有機的膨張・放出縮小表現 */}
+        <div className="space-y-2 pt-1 border-t border-gray-200">
+          <label className="flex items-center justify-between bg-emerald-500/10 hover:bg-emerald-500/20 p-2 rounded-md border border-emerald-500/30 cursor-pointer transition">
+            <span className="text-[11px] text-emerald-950 font-medium">
+              ベース円の有機的成長・放出縮小
+            </span>
+            <input
+              type="checkbox"
+              checked={params.enableOrganicParentGrowth}
+              onChange={(e) =>
+                onParamChange(
+                  "enableOrganicParentGrowth",
+                  e.target.checked,
+                )
+              }
+              className="rounded text-emerald-600 focus:ring-0 w-4 h-4 cursor-pointer"
+            />
+          </label>
+
+          {params.enableOrganicParentGrowth && (
+            <div className="space-y-2 pl-1 pt-1">
+              {/* 膨張速度 */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px] text-gray-600">
+                  <span>吸気・膨張速度</span>
+                  <span className="font-mono text-gray-900 font-semibold">
+                    {params.parentGrowthRate.toFixed(2)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.05}
+                  max={0.8}
+                  step={0.05}
+                  value={params.parentGrowthRate}
+                  onChange={(e) =>
+                    onParamChange(
+                      "parentGrowthRate",
+                      Number(e.target.value),
+                    )
+                  }
+                  className="w-full accent-emerald-600 h-1 bg-gray-200 rounded-lg cursor-pointer"
+                />
+              </div>
+
+              {/* 放出時の縮小係数 */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px] text-gray-600">
+                  <span>放出時の縮小係数</span>
+                  <span className="font-mono text-gray-900 font-semibold">
+                    {Math.round(params.deflationShrinkFactor * 100)} %
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.05}
+                  max={0.6}
+                  step={0.01}
+                  value={params.deflationShrinkFactor}
+                  onChange={(e) =>
+                    onParamChange(
+                      "deflationShrinkFactor",
+                      Number(e.target.value),
+                    )
+                  }
+                  className="w-full accent-emerald-600 h-1 bg-gray-200 rounded-lg cursor-pointer"
+                />
+              </div>
+
+              {/* 放出縮小の所要時間 (基準: 1.0) */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px] text-gray-600">
+                  <span>放出縮小の所要時間 (基準: 1.0)</span>
+                  <span className="font-mono text-gray-900 font-semibold">
+                    {params.deflationDurationFactor.toFixed(2)}x
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.2}
+                  max={3.0}
+                  step={0.05}
+                  value={params.deflationDurationFactor}
+                  onChange={(e) =>
+                    onParamChange(
+                      "deflationDurationFactor",
+                      Number(e.target.value),
+                    )
+                  }
+                  className="w-full accent-emerald-600 h-1 bg-gray-200 rounded-lg cursor-pointer"
+                />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 収縮 & 有機的蛇行軌跡 */}

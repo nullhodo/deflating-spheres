@@ -48,6 +48,8 @@ export const RandomTargetsDrawer: React.FC = () => {
       emission: enable,
       deflation: enable,
       wander: enable,
+      distinctChildColor: enable,
+      organicParentGrowth: enable,
       effects: enable,
       circleOpacity: enable,
       randomSeed: enable,
@@ -135,6 +137,16 @@ export const RandomTargetsDrawer: React.FC = () => {
           key: "wander",
           label: "蛇行軌跡・有機的揺らぎ・軌跡履歴長",
           desc: "うねり強度、周波数、慣性平滑化、描画密度の変更",
+        },
+        {
+          key: "distinctChildColor",
+          label: "放出円の色を親円と別色にする",
+          desc: "親円と異なるカラーを子円に割り当て",
+        },
+        {
+          key: "organicParentGrowth",
+          label: "ベース円の有機的成長・放出縮小",
+          desc: "吸気成長速度および放出時の反動縮小係数",
         },
         {
           key: "effects",

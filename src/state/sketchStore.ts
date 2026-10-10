@@ -11,6 +11,8 @@ const DEFAULT_RANDOM_TARGETS: RandomTargets = {
   emission: true,
   deflation: true,
   wander: true,
+  distinctChildColor: false,
+  organicParentGrowth: false,
   effects: false,
   circleOpacity: false,
   randomSeed: true,
