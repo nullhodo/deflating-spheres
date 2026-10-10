@@ -598,11 +598,11 @@ export const PALETTES: Palette[] = [
 export const DEFAULT_SKETCH_PARAMETERS: SketchParameters = {
   canvasAspectRatio: 1.0,
   canvasPadding: 40,
-  backgroundColor: PALETTES[0].colors[1].hex,
-  primaryColor: PALETTES[0].colors[0].hex,
-  secondaryColor: PALETTES[0].colors[2].hex,
-  accentColor: PALETTES[0].colors[0].hex,
-  paletteIndex: 0,
+  backgroundColor: PALETTES[16].colors[7]?.hex || "#DFC7AF",
+  primaryColor: PALETTES[16].colors[0]?.hex || "#551A28",
+  secondaryColor: PALETTES[16].colors[1]?.hex || "#D89F08",
+  accentColor: PALETTES[16].colors[2]?.hex || "#2D8C84",
+  paletteIndex: 16,
   randomSeedValue: 12345,
 
   // Deflating Spheres Core Parameters
@@ -614,11 +614,20 @@ export const DEFAULT_SKETCH_PARAMETERS: SketchParameters = {
   initialVelocity: 5.7,
 
   deflationRate: 0.011,
-  wanderStrength: 1.2,
+  wanderStrength: 0.9,
   harmonicFrequency: 0.035,
-  smoothingFactor: 0.92,
-  trailHistoryLength: 32,
+  smoothingFactor: 0.99,
+  trailHistoryLength: 100,
   circleOpacity: 1.0,
+
+  // Distinct child color option (default true)
+  distinctChildColor: true,
+
+  // Organic parent growth & deflate shrinkage (default true)
+  enableOrganicParentGrowth: true,
+  parentGrowthRate: 0.15,
+  deflationShrinkFactor: 0.25,
+  deflationDurationFactor: 1.4,
 
   // Opt-in Visual Effects (Default OFF)
   enableBreathingPulse: false,
@@ -632,7 +641,7 @@ export const DEFAULT_SKETCH_PARAMETERS: SketchParameters = {
   singleColorValue: "#38bdf8",
   useGradientTheme: false,
   gradientBaseColor: "#38bdf8",
-  backgroundColorIndex: 0,
+  backgroundColorIndex: 7,
   manualBackgroundColor: "#121316",
 
   // Custom demo parameters
