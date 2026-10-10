@@ -29,6 +29,7 @@ export class OrganicDeflatingCircle {
   public positionHistory: PositionRecord[];
   public lifespanFrames: number;
   public isDeflated: boolean;
+  public hasTriggeredParentDeflation: boolean;
 
   constructor(
     spawnPositionX: number,
@@ -56,6 +57,7 @@ export class OrganicDeflatingCircle {
     this.positionHistory = [];
     this.lifespanFrames = 0;
     this.isDeflated = false;
+    this.hasTriggeredParentDeflation = false;
   }
 
   /**

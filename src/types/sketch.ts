@@ -47,6 +47,15 @@ export interface SketchParameters {
   trailHistoryLength: number;
   circleOpacity: number;
 
+  // Distinct child color option
+  distinctChildColor: boolean;
+
+  // Organic parent growth & deflate shrinkage
+  enableOrganicParentGrowth: boolean;
+  parentGrowthRate: number;
+  deflationShrinkFactor: number;
+  deflationDurationFactor: number;
+
   // Opt-in Visual Effects (Default OFF)
   enableBreathingPulse: boolean;
   enableReflectionHighlight: boolean;
@@ -122,6 +131,8 @@ export interface RandomTargets {
   emission: boolean;
   deflation: boolean;
   wander: boolean;
+  distinctChildColor: boolean;
+  organicParentGrowth: boolean;
   effects: boolean;
   circleOpacity: boolean;
   randomSeed: boolean;

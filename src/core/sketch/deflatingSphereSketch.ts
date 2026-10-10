@@ -12,15 +12,23 @@ export class DeflatingSphereSimulation {
   public circles: OrganicDeflatingCircle[] = [];
   public parentPulsePhase = 0;
   public frameEmissionCounter = 0;
-  public nextEmissionTargetFrames = 60;
+  public nextEmissionTargetFrames = 0;
   public globalSimulationTime = 0;
+
+  // 有機的成長・放出収縮オフセット
+  public parentGrowthOffset = 0;
+  public parentShrinkOffset = 0;
+  public parentShrinkVelocity = 0;
 
   public reset(): void {
     this.circles = [];
     this.parentPulsePhase = 0;
     this.frameEmissionCounter = 0;
-    this.nextEmissionTargetFrames = 60;
+    this.nextEmissionTargetFrames = 0;
     this.globalSimulationTime = 0;
+    this.parentGrowthOffset = 0;
+    this.parentShrinkOffset = 0;
+    this.parentShrinkVelocity = 0;
   }
 
   /**
@@ -35,33 +43,124 @@ export class DeflatingSphereSimulation {
   ): SimulationStats {
     this.globalSimulationTime += 0.016;
 
-    const centerX = width / 2;
-    const centerY = height / 2;
-
-    // 呼吸・脈動エフェクト
-    let currentParentRadius = params.centerRadius;
-    if (params.enableBreathingPulse) {
-      this.parentPulsePhase += params.pulseSpeed;
-      const dynamicPulseOffset =
-        Math.sin(this.parentPulsePhase) * params.pulseIntensity;
-      currentParentRadius = Math.max(
-        10,
-        params.centerRadius + dynamicPulseOffset,
+    if (this.nextEmissionTargetFrames <= 0) {
+      this.nextEmissionTargetFrames = Math.max(
+        3,
+        params.emissionIntervalFrames,
       );
     }
 
-    // 子円の定期生成 (ゆらぎ付き)
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    // 1. 有機的成長（ロジスティック飽和付き：上限に近づくほど緩やかに減速し、自律的に安定）
+    if (params.enableOrganicParentGrowth) {
+      const maxGrowth = params.centerRadius * 0.75;
+      const saturationRatio = Math.min(
+        1,
+        Math.max(0, this.parentGrowthOffset / Math.max(1, maxGrowth)),
+      );
+      // 上限に近づくにつれて吸気・膨張速度を緩やかに
+      const effectiveGrowth =
+        params.parentGrowthRate * (1 - saturationRatio * 0.75);
+      this.parentGrowthOffset = Math.min(
+        maxGrowth,
+        this.parentGrowthOffset + effectiveGrowth,
+      );
+    } else {
+      this.parentGrowthOffset = 0;
+    }
+
+    // 2. 放出時の収縮オフセット：スプリング・ダンパー物理（Ease-In-Out 弾性振動）
+    // 瞬間ステップ変位ではなく、速度と弾性加速度により
+    // 「ゼロから加速して縮み（Ease-In）→ 最深部で滑らかに減速（変曲点）→ ふんわりと弾性復元（Ease-Out）」を実現
+    // deflationDurationFactor (現在の基準時間を 1.0 とする) により所要時間をスケーリング
+    const durationFactor = Math.max(
+      0.1,
+      params.deflationDurationFactor ?? 1.0,
+    );
+    const steps = 4;
+    const dt = 1.0 / (durationFactor * steps);
+    // スプリング剛性を調整してEase-Inの立ち上がりレスポンスを向上
+    const springStiffness = 0.11;
+    const springDamping = 0.26;
+
+    for (let s = 0; s < steps; s++) {
+      const springForce = -springStiffness * this.parentShrinkOffset;
+      const dampingForce = -springDamping * this.parentShrinkVelocity;
+      this.parentShrinkVelocity += (springForce + dampingForce) * dt;
+      this.parentShrinkOffset += this.parentShrinkVelocity * dt;
+    }
+
+    // 微小振動の停止
+    if (
+      Math.abs(this.parentShrinkOffset) < 0.001 &&
+      Math.abs(this.parentShrinkVelocity) < 0.001
+    ) {
+      this.parentShrinkOffset = 0;
+      this.parentShrinkVelocity = 0;
+    }
+
+    // 3. 呼吸・脈動エフェクト (Opt-in)
+    let dynamicPulseOffset = 0;
+    if (params.enableBreathingPulse) {
+      this.parentPulsePhase += params.pulseSpeed;
+      dynamicPulseOffset =
+        Math.sin(this.parentPulsePhase) * params.pulseIntensity;
+    }
+
+    // 現在のベース親円の半径を計算
+    const currentParentRadius = Math.max(
+      15,
+      params.centerRadius +
+        dynamicPulseOffset +
+        this.parentGrowthOffset +
+        this.parentShrinkOffset,
+    );
+
+    // 4. 子円の放出判定
     this.frameEmissionCounter++;
-    if (this.frameEmissionCounter >= this.nextEmissionTargetFrames) {
+    let shouldEmit =
+      this.frameEmissionCounter >= this.nextEmissionTargetFrames;
+
+    // アイデア①: 内圧超過による確率的放出（自律平衡フィードバック）
+    // 基準より大きく膨らんでいる場合、閾値超過分に応じた確率で放出を促進
+    if (
+      !shouldEmit &&
+      params.enableOrganicParentGrowth &&
+      this.frameEmissionCounter >= 6
+    ) {
+      const excess = this.parentGrowthOffset;
+      const maxGrowth = params.centerRadius * 0.75;
+      if (excess > maxGrowth * 0.35) {
+        // 超過度合いに比例して確率が上昇 (毎フレーム 0〜4% 程度の確率)
+        const pressureProbability =
+          ((excess - maxGrowth * 0.35) / (maxGrowth * 0.65)) * 0.035;
+        if (Math.random() < pressureProbability) {
+          shouldEmit = true;
+        }
+      }
+    }
+
+    if (shouldEmit) {
       this.frameEmissionCounter = 0;
+
+      // 放出される子円の初期半径（親円の大きさに応じた有機的な風船サイズ）
+      const childEmissionRadius = Math.max(
+        14,
+        Math.min(currentParentRadius * 0.38, 55),
+      );
+
+      // 放出実行（生成時はまだ親円のお腹の中にいるため縮まない）
       this.emitNewCircle(
         centerX,
         centerY,
-        currentParentRadius,
+        childEmissionRadius,
         params,
         palettes,
       );
 
+      // 次回放出フレーム数の決定 (Jitter付き)
       const jitterOffsetRatio =
         (Math.random() * 2 - 1) * params.emissionJitterFactor;
       const randomizedInterval =
@@ -72,10 +171,43 @@ export class DeflatingSphereSimulation {
       );
     }
 
-    // 子円の物理更新 & 寿命判定
+    // 5. 子円の物理更新 & フチ抜け時の収縮トリガー & 寿命判定
     for (let i = this.circles.length - 1; i >= 0; i--) {
       const circle = this.circles[i];
       circle.updateSimulationState(params, noiseFn);
+
+      // 有機的収縮表現: 子円が親円のフチ（外周）を越えて外へ出たタイミングで発火！
+      if (
+        params.enableOrganicParentGrowth &&
+        !circle.hasTriggeredParentDeflation
+      ) {
+        const dx = circle.currentPositionX - centerX;
+        const dy = circle.currentPositionY - centerY;
+        const distFromCenter = Math.hypot(dx, dy);
+
+        // 子円の中心が親円のフチ（外周）を跨いだ瞬間に収縮を発火
+        if (distFromCenter >= currentParentRadius) {
+          circle.hasTriggeredParentDeflation = true;
+
+          const totalShrink =
+            circle.startRadius * params.deflationShrinkFactor;
+
+          // 最初のEase-Inの遅さを解消するため、発火瞬間に初動レスポンス（即時変位）を与え、
+          // 続いて速度インパルスで素早く最大収縮へ加速（キレのあるEase-In）
+          const immediateKick = totalShrink * 0.22;
+          this.parentShrinkOffset -= immediateKick;
+
+          const shrinkImpulse = totalShrink * 0.38;
+          this.parentShrinkVelocity -= shrinkImpulse;
+
+          // 蓄積成長分も一部吐き出されて収支のつり合いを取る
+          this.parentGrowthOffset = Math.max(
+            0,
+            this.parentGrowthOffset -
+              (immediateKick + shrinkImpulse) * 0.65,
+          );
+        }
+      }
 
       const isOutOfBounds =
         circle.currentPositionX < -150 ||
@@ -105,14 +237,30 @@ export class DeflatingSphereSimulation {
     palettes: Palette[],
   ): void {
     const randomAngle = Math.random() * Math.PI * 2;
-    const candidateColors = getAvailableObjectColors(params, palettes);
-    const chosenColor = candidateColors[
-      Math.floor(Math.random() * candidateColors.length)
-    ] || {
+    const availableColors = getAvailableObjectColors(params, palettes);
+    const parentPrimaryColor = availableColors[0] || {
       name: "Default",
-      hex: "#38bdf8",
-      rgb: [56, 189, 248],
+      hex: "#551A28",
+      rgb: [85, 26, 40],
     };
+
+    let candidateColors = availableColors;
+
+    // 出ていく円はベース円と違う色にするオプション
+    if (params.distinctChildColor && availableColors.length > 1) {
+      const parentHex = parentPrimaryColor.hex.toLowerCase();
+      const distinctList = availableColors.filter(
+        (c) => c.hex.toLowerCase() !== parentHex,
+      );
+      if (distinctList.length > 0) {
+        candidateColors = distinctList;
+      }
+    }
+
+    const chosenColor =
+      candidateColors[
+        Math.floor(Math.random() * candidateColors.length)
+      ] || parentPrimaryColor;
 
     const newCircle = new OrganicDeflatingCircle(
       centerX,
@@ -141,15 +289,19 @@ export class DeflatingSphereSimulation {
     const centerX = (width * scaleMultiplier) / 2;
     const centerY = (height * scaleMultiplier) / 2;
 
+    const dynamicPulseOffset = params.enableBreathingPulse
+      ? Math.sin(this.parentPulsePhase) * params.pulseIntensity
+      : 0;
+
     const parentRadius =
       currentParentRadius ??
-      (params.enableBreathingPulse
-        ? Math.max(
-            10,
-            params.centerRadius +
-              Math.sin(this.parentPulsePhase) * params.pulseIntensity,
-          )
-        : params.centerRadius);
+      Math.max(
+        15,
+        params.centerRadius +
+          dynamicPulseOffset +
+          this.parentGrowthOffset +
+          this.parentShrinkOffset,
+      );
 
     // 子円の描画
     for (const circle of this.circles) {
@@ -184,8 +336,8 @@ export class DeflatingSphereSimulation {
     const availableColors = getAvailableObjectColors(params, palettes);
     const primaryColor = availableColors[0] || {
       name: "Default",
-      hex: "#dcdce6",
-      rgb: [220, 220, 230],
+      hex: "#551A28",
+      rgb: [85, 26, 40],
     };
     const rgbValues = primaryColor.rgb;
     const red = rgbValues[0];
