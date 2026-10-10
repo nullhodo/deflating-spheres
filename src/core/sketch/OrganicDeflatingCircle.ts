@@ -75,28 +75,26 @@ export class OrganicDeflatingCircle {
 
     // フェーズ 2: 円本体（ヘッド）が縮小・消滅した後のトレイル残存・自然消散処理
     if (this.isHeadDeflated) {
-      // 尾っぽが流れて消えていくよう、古い履歴を順次消化
+      // 尾っぽが流れて消えていくよう、最低限の描画点（2点）を残しながら古い履歴を消化
       const shrinkSteps = Math.max(
         1,
-        Math.ceil(this.positionHistory.length * 0.035),
+        Math.ceil(this.positionHistory.length * 0.03),
       );
       for (
         let s = 0;
-        s < shrinkSteps && this.positionHistory.length > 0;
+        s < shrinkSteps && this.positionHistory.length > 2;
         s++
       ) {
         this.positionHistory.shift();
       }
 
       // トレイル透明度を滑らかにフェードアウト
-      this.trailFadeAlpha = Math.max(0, this.trailFadeAlpha - 0.025);
+      this.trailFadeAlpha = Math.max(0, this.trailFadeAlpha - 0.02);
 
-      // トレイルの描画点が尽きたか透明度がゼロになったら完全消滅
-      if (
-        this.positionHistory.length <= 1 ||
-        this.trailFadeAlpha <= 0.01
-      ) {
+      // 透明度が完全にゼロになった時点で安全に完全消滅
+      if (this.trailFadeAlpha <= 0.01) {
         this.isDeflated = true;
+        this.positionHistory = [];
       }
       return;
     }

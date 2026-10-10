@@ -215,13 +215,43 @@ export class DeflatingSphereSimulation {
         }
       }
 
-      const isOutOfBounds =
-        circle.currentPositionX < -150 ||
-        circle.currentPositionX > width + 150 ||
-        circle.currentPositionY < -150 ||
-        circle.currentPositionY > height + 150;
+      // 画面内にヘッドまたは軌跡が残っているか判定
+      // ヘッドが画面外に出ても、軌跡が画面内に残っている間は削除せず、
+      // 軌跡の最後尾まで画面外へ完全に抜け出るまで自然な描画を継続
+      const margin = 60;
+      const isHeadInside =
+        circle.currentPositionX >= -margin &&
+        circle.currentPositionX <= width + margin &&
+        circle.currentPositionY >= -margin &&
+        circle.currentPositionY <= height + margin;
 
-      if (circle.isDeflated || isOutOfBounds) {
+      let hasVisibleTrail = false;
+      if (!isHeadInside) {
+        for (let j = 0; j < circle.positionHistory.length; j++) {
+          const pt = circle.positionHistory[j];
+          if (
+            pt.positionX >= -margin &&
+            pt.positionX <= width + margin &&
+            pt.positionY >= -margin &&
+            pt.positionY <= height + margin
+          ) {
+            hasVisibleTrail = true;
+            break;
+          }
+        }
+      }
+
+      // 極端な遠方への安全ガード (1200px)
+      const isFarBeyondScreen =
+        circle.currentPositionX < -1200 ||
+        circle.currentPositionX > width + 1200 ||
+        circle.currentPositionY < -1200 ||
+        circle.currentPositionY > height + 1200;
+
+      const isCompletelyOffscreen =
+        (!isHeadInside && !hasVisibleTrail) || isFarBeyondScreen;
+
+      if (circle.isDeflated || isCompletelyOffscreen) {
         this.circles.splice(i, 1);
       }
     }
