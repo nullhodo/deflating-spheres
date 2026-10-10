@@ -2,6 +2,7 @@ import { useAtom } from "jotai";
 import {
   CheckIcon,
   ChevronDownIcon,
+  LayersIcon,
   PaletteIcon,
   RefreshCwIcon,
   ShuffleIcon,
@@ -361,6 +362,100 @@ export const ColorPaletteSection: React.FC<Props> = ({
             >
               グラデーション更新
             </button>
+          </div>
+        )}
+      </div>
+
+      {/* 色減算・充填システム (三原色の混色) */}
+      <div className="pt-2 border-t border-gray-200 space-y-2">
+        <label className="flex items-center justify-between text-gray-800 text-[11px] font-semibold cursor-pointer">
+          <span className="flex items-center gap-1.5">
+            <LayersIcon className="w-3.5 h-3.5 text-indigo-500" />
+            色減算・充填システム (三原色)
+          </span>
+          <input
+            type="checkbox"
+            checked={params.enableColorMixingSystem}
+            onChange={(e) => {
+              const isChecked = e.target.checked;
+              onParamChange("enableColorMixingSystem", isChecked);
+              if (isChecked) {
+                // 三原色システムON時は縮小係数を0、不透明度を0.7 (透過混色) に設定
+                onParamChange("deflationShrinkFactor", 0);
+                onParamChange("circleOpacity", 0.7);
+              }
+            }}
+            className="rounded text-indigo-600 focus:ring-0 w-3.5 h-3.5 cursor-pointer"
+          />
+        </label>
+
+        {params.enableColorMixingSystem && (
+          <div className="bg-indigo-50/70 p-2.5 rounded border border-indigo-100 space-y-2.5 text-xs text-gray-700">
+            {/* 混色方式切り替え */}
+            <div>
+              <span className="text-[10px] text-gray-500 font-medium block mb-1">
+                混色方式
+              </span>
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    onParamChange("colorMixingMode", "rgb_additive")
+                  }
+                  className={`py-1 px-2 rounded text-[11px] font-medium border text-center transition cursor-pointer ${
+                    params.colorMixingMode === "rgb_additive"
+                      ? "bg-white border-indigo-500 text-indigo-700 shadow-xs"
+                      : "bg-white/60 border-gray-200 text-gray-600 hover:bg-white"
+                  }`}
+                >
+                  光の三原色 (RGB加算)
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onParamChange("colorMixingMode", "cmy_subtractive")
+                  }
+                  className={`py-1 px-2 rounded text-[11px] font-medium border text-center transition cursor-pointer ${
+                    params.colorMixingMode === "cmy_subtractive"
+                      ? "bg-white border-indigo-500 text-indigo-700 shadow-xs"
+                      : "bg-white/60 border-gray-200 text-gray-600 hover:bg-white"
+                  }`}
+                >
+                  色の三原色 (CMY減算)
+                </button>
+              </div>
+            </div>
+
+            {/* モード説明 */}
+            <p className="text-[10px] text-gray-500 leading-normal">
+              {params.colorMixingMode === "rgb_additive"
+                ? "白光から黄色が出ると青が残り、シアンが出ると赤が残る補色減算。吸気・時間で白光へ再充填"
+                : "深色からイエローが出ると青が残り、シアンが出ると赤が残るインク減算。吸気・時間で深インク色へ再充填"}
+            </p>
+
+            {/* 充填速度スライダー */}
+            <div>
+              <div className="flex justify-between text-[10px] text-gray-600 mb-1">
+                <span>色の充填速度 (リチャージ)</span>
+                <span className="font-mono">
+                  {(params.colorRechargeSpeed ?? 0.008).toFixed(4)}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0.0005"
+                max="0.03"
+                step="0.0005"
+                value={params.colorRechargeSpeed ?? 0.008}
+                onChange={(e) =>
+                  onParamChange(
+                    "colorRechargeSpeed",
+                    Number.parseFloat(e.target.value),
+                  )
+                }
+                className="w-full h-1.5 bg-indigo-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              />
+            </div>
           </div>
         )}
       </div>

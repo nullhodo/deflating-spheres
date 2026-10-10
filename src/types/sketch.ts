@@ -73,6 +73,11 @@ export interface SketchParameters {
   backgroundColorIndex: number;
   manualBackgroundColor: string;
 
+  // Color Mixing & Subtraction System
+  enableColorMixingSystem?: boolean;
+  colorMixingMode?: "rgb_additive" | "cmy_subtractive";
+  colorRechargeSpeed?: number;
+
   // Demo Shape Parameters (for compatibility)
   shapeCount: number;
   shapeSize: number;

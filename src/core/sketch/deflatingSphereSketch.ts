@@ -1,5 +1,5 @@
 import type p5 from "p5";
-import type { Palette, SketchParameters } from "../../types/sketch";
+import type { ColorItem, Palette, SketchParameters } from "../../types/sketch";
 import { getAvailableObjectColors } from "../../utils/colorUtils";
 import { OrganicDeflatingCircle } from "./OrganicDeflatingCircle";
 
@@ -7,6 +7,58 @@ interface SimulationStats {
   activeCount: number;
   currentParentRadius: number;
 }
+
+interface ComplementaryPair {
+  name: string;
+  emittedColor: ColorItem;
+  remainingRgb: [number, number, number];
+}
+
+// 光の三原色 (RGB加法混色): 親の基本色は「白光 [255, 255, 255]」
+// 白から子球体が抜けると、親にはその補色が残る
+// 例: 黄色 (R+G) が抜けると、親には青 (B) が残る！
+// 例: シアン (G+B) が抜けると、親には赤 (R) が残る！
+// 例: マゼンタ (R+B) が抜けると、親には緑 (G) が残る！
+const RGB_ADDITIVE_PAIRS: ComplementaryPair[] = [
+  {
+    name: "Yellow / Blue",
+    emittedColor: { name: "Yellow Light", hex: "#FACC15", rgb: [250, 204, 21] },
+    remainingRgb: [35, 75, 245], // 青が残る
+  },
+  {
+    name: "Cyan / Red",
+    emittedColor: { name: "Cyan Light", hex: "#06B6D4", rgb: [6, 182, 212] },
+    remainingRgb: [245, 50, 65], // 赤が残る
+  },
+  {
+    name: "Magenta / Green",
+    emittedColor: { name: "Magenta Light", hex: "#EC4899", rgb: [236, 72, 153] },
+    remainingRgb: [30, 205, 80], // 緑が残る
+  },
+];
+
+// 色の三原色 (CMY減法混色): 親の基本色は「漆黒 [20, 20, 26]」
+// 漆黒からインクが抜けると、親にはその補色インクが残る
+// 例: イエローインクが抜けると、親には青 (C+M) が残る！
+// 例: シアンインクが抜けると、親には赤 (M+Y) が残る！
+// 例: マゼンタインクが抜けると、親には緑 (C+Y) が残る！
+const CMY_SUBTRACTIVE_PAIRS: ComplementaryPair[] = [
+  {
+    name: "Yellow / Blue",
+    emittedColor: { name: "Yellow Ink", hex: "#EAB308", rgb: [234, 179, 8] },
+    remainingRgb: [35, 75, 245], // 青が残る
+  },
+  {
+    name: "Cyan / Red",
+    emittedColor: { name: "Cyan Ink", hex: "#06B6D4", rgb: [6, 182, 212] },
+    remainingRgb: [245, 50, 65], // 赤が残る
+  },
+  {
+    name: "Magenta / Green",
+    emittedColor: { name: "Magenta Ink", hex: "#EC4899", rgb: [236, 72, 153] },
+    remainingRgb: [30, 205, 80], // 緑が残る
+  },
+];
 
 export class DeflatingSphereSimulation {
   public circles: OrganicDeflatingCircle[] = [];
@@ -20,6 +72,11 @@ export class DeflatingSphereSimulation {
   public parentShrinkOffset = 0;
   public parentShrinkVelocity = 0;
 
+  // 色減算・充填システム用状態 (急激な色変化を防ぐため目標色と現在色をlerp補間)
+  public parentTargetRgb: [number, number, number] = [255, 255, 255];
+  public parentCurrentRgb: [number, number, number] = [255, 255, 255];
+  private lastEmittedPrimaryIndex = -1;
+
   public reset(): void {
     this.circles = [];
     this.parentPulsePhase = 0;
@@ -29,6 +86,9 @@ export class DeflatingSphereSimulation {
     this.parentGrowthOffset = 0;
     this.parentShrinkOffset = 0;
     this.parentShrinkVelocity = 0;
+    this.parentTargetRgb = [255, 255, 255];
+    this.parentCurrentRgb = [255, 255, 255];
+    this.lastEmittedPrimaryIndex = -1;
   }
 
   /**
@@ -118,6 +178,45 @@ export class DeflatingSphereSimulation {
         this.parentShrinkOffset,
     );
 
+    // 3.5. 色の充填 (リチャージ) 処理と急激な色変化を防ぐ滑らかな追従アニメーション
+    if (params.enableColorMixingSystem) {
+      const baseRecharge = params.colorRechargeSpeed ?? 0.008;
+      let growthRatio = 0;
+      if (params.enableOrganicParentGrowth && params.centerRadius > 0) {
+        const maxGrowth = params.centerRadius * 0.75;
+        growthRatio = Math.min(
+          1,
+          Math.max(0, this.parentGrowthOffset / Math.max(1, maxGrowth)),
+        );
+      }
+      // baseRecharge基準とし、吸気成長度合いに応じて穏やかにブースト (最大2倍)
+      const effectiveRecharge = baseRecharge * (1.0 + growthRatio * 1.0);
+
+      // ベース色 (復帰目標): RGB加算なら白光 [255, 255, 255]、CMY減算なら漆黒 [20, 20, 26]
+      const baseColorRgb: [number, number, number] =
+        params.colorMixingMode === "rgb_additive"
+          ? [255, 255, 255]
+          : [20, 20, 26];
+
+      // 目標色 (parentTargetRgb) をベース色へ向かってじわじわと充填
+      this.parentTargetRgb[0] +=
+        (baseColorRgb[0] - this.parentTargetRgb[0]) * effectiveRecharge;
+      this.parentTargetRgb[1] +=
+        (baseColorRgb[1] - this.parentTargetRgb[1]) * effectiveRecharge;
+      this.parentTargetRgb[2] +=
+        (baseColorRgb[2] - this.parentTargetRgb[2]) * effectiveRecharge;
+
+      // 急激な色変化を完全に解消！
+      // 現在色 (parentCurrentRgb) を目標色へ向かって滑らかなイージング (lerp) で追従 (約0.25秒かけてグラデーション)
+      const colorSmoothing = 0.075;
+      this.parentCurrentRgb[0] +=
+        (this.parentTargetRgb[0] - this.parentCurrentRgb[0]) * colorSmoothing;
+      this.parentCurrentRgb[1] +=
+        (this.parentTargetRgb[1] - this.parentCurrentRgb[1]) * colorSmoothing;
+      this.parentCurrentRgb[2] +=
+        (this.parentTargetRgb[2] - this.parentCurrentRgb[2]) * colorSmoothing;
+    }
+
     // 4. 子円の放出判定
     this.frameEmissionCounter++;
     let shouldEmit =
@@ -145,11 +244,11 @@ export class DeflatingSphereSimulation {
     if (shouldEmit) {
       this.frameEmissionCounter = 0;
 
-      // 放出される子円の初期半径（親円の大きさに応じた有機的な風船サイズ）
-      const childEmissionRadius = Math.max(
-        14,
-        Math.min(currentParentRadius * 0.38, 55),
-      );
+      // 放出される子円の初期半径
+      // 三原色システムON時は親円の大きさと同じ (等身大) で放出
+      const childEmissionRadius = params.enableColorMixingSystem
+        ? currentParentRadius
+        : Math.max(14, Math.min(currentParentRadius * 0.38, 55));
 
       // 放出実行（生成時はまだ親円のお腹の中にいるため縮まない）
       this.emitNewCircle(
@@ -273,30 +372,56 @@ export class DeflatingSphereSimulation {
     palettes: Palette[],
   ): void {
     const randomAngle = Math.random() * Math.PI * 2;
-    const availableColors = getAvailableObjectColors(params, palettes);
-    const parentPrimaryColor = availableColors[0] || {
-      name: "Default",
-      hex: "#551A28",
-      rgb: [85, 26, 40],
-    };
+    let chosenColor: ColorItem;
 
-    let candidateColors = availableColors;
+    if (params.enableColorMixingSystem) {
+      const pairs =
+        params.colorMixingMode === "rgb_additive"
+          ? RGB_ADDITIVE_PAIRS
+          : CMY_SUBTRACTIVE_PAIRS;
 
-    // 出ていく円はベース円と違う色にするオプション
-    if (params.distinctChildColor && availableColors.length > 1) {
-      const parentHex = parentPrimaryColor.hex.toLowerCase();
-      const distinctList = availableColors.filter(
-        (c) => c.hex.toLowerCase() !== parentHex,
-      );
-      if (distinctList.length > 0) {
-        candidateColors = distinctList;
+      let chosenIdx = Math.floor(Math.random() * pairs.length);
+      if (chosenIdx === this.lastEmittedPrimaryIndex && pairs.length > 1) {
+        chosenIdx = (chosenIdx + 1) % pairs.length;
       }
-    }
+      this.lastEmittedPrimaryIndex = chosenIdx;
 
-    const chosenColor =
-      candidateColors[
-        Math.floor(Math.random() * candidateColors.length)
-      ] || parentPrimaryColor;
+      const selectedPair = pairs[chosenIdx];
+      chosenColor = selectedPair.emittedColor;
+
+      // 減算効果:
+      // 「白から黄色が出ると青が残る」
+      // 「シアンが出ると赤が残る」
+      // 「マゼンタが出ると緑が残る」
+      // 目標色 (parentTargetRgb) に残余色を設定！
+      // (parentCurrentRgb は lerp で滑らかにそこへ向かって変化するため、急激な変色やカクつきはゼロ)
+      this.parentTargetRgb = [...selectedPair.remainingRgb];
+    } else {
+      const availableColors = getAvailableObjectColors(params, palettes);
+      const parentPrimaryColor = availableColors[0] || {
+        name: "Default",
+        hex: "#551A28",
+        rgb: [85, 26, 40],
+      };
+
+      let candidateColors = availableColors;
+
+      // 出ていく円はベース円と違う色にするオプション
+      if (params.distinctChildColor && availableColors.length > 1) {
+        const parentHex = parentPrimaryColor.hex.toLowerCase();
+        const distinctList = availableColors.filter(
+          (c) => c.hex.toLowerCase() !== parentHex,
+        );
+        if (distinctList.length > 0) {
+          candidateColors = distinctList;
+        }
+      }
+
+      chosenColor =
+        candidateColors[
+          Math.floor(Math.random() * candidateColors.length)
+        ] || parentPrimaryColor;
+    }
 
     const newCircle = new OrganicDeflatingCircle(
       centerX,
@@ -369,17 +494,31 @@ export class DeflatingSphereSimulation {
     scaleMultiplier = 1.0,
   ): void {
     target.push();
-    const availableColors = getAvailableObjectColors(params, palettes);
-    const primaryColor = availableColors[0] || {
-      name: "Default",
-      hex: "#551A28",
-      rgb: [85, 26, 40],
-    };
-    const rgbValues = primaryColor.rgb;
-    const red = rgbValues[0];
-    const green = rgbValues[1];
-    const blue = rgbValues[2];
-    const opacity = params.circleOpacity;
+    let red: number;
+    let green: number;
+    let blue: number;
+
+    if (params.enableColorMixingSystem) {
+      red = Math.round(this.parentCurrentRgb[0]);
+      green = Math.round(this.parentCurrentRgb[1]);
+      blue = Math.round(this.parentCurrentRgb[2]);
+    } else {
+      const availableColors = getAvailableObjectColors(params, palettes);
+      const primaryColor = availableColors[0] || {
+        name: "Default",
+        hex: "#551A28",
+        rgb: [85, 26, 40],
+      };
+      const rgbValues = primaryColor.rgb;
+      red = rgbValues[0];
+      green = rgbValues[1];
+      blue = rgbValues[2];
+    }
+
+    // 三原色の混色・減算モード時は透過度を低めに調整して色の重なりを美しく見せる
+    const opacity = params.enableColorMixingSystem
+      ? Math.min(params.circleOpacity, 0.75)
+      : params.circleOpacity;
 
     // 1. ボケ光量・グローエフェクト (Opt-in)
     if (params.enableGlowBokeh) {

@@ -671,6 +671,13 @@ export const DEFAULT_SKETCH_PARAMETERS: SketchParameters = {
   // 手動背景色
   manualBackgroundColor: "#121316",
 
+  // 色減算・充填システム (三原色の混色)
+  enableColorMixingSystem: false,
+  // 混色モード (RGB加算 / CMY減算)
+  colorMixingMode: "rgb_additive",
+  // 色の充填速度 (リチャージ)
+  colorRechargeSpeed: 0.008,
+
   // シェイプ数 (互換用)
   shapeCount: 16,
   // シェイプサイズ (互換用)
