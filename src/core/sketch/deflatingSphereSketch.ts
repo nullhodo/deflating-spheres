@@ -198,40 +198,49 @@ export class DeflatingSphereSimulation {
       }
       // baseRecharge基準とし、吸気成長度合いに応じて穏やかにブースト (最大2倍)
       const effectiveRecharge = baseRecharge * (1.0 + growthRatio * 1.0);
-      const colorSmoothing = 0.075;
 
       if (params.colorMixingMode === "rgb_additive") {
         // 目標色 (parentTargetRgb) を白光 [255, 255, 255] へ向かって充填
-        this.parentTargetRgb[0] +=
-          (255 - this.parentTargetRgb[0]) * effectiveRecharge;
-        this.parentTargetRgb[1] +=
-          (255 - this.parentTargetRgb[1]) * effectiveRecharge;
-        this.parentTargetRgb[2] +=
-          (255 - this.parentTargetRgb[2]) * effectiveRecharge;
+        this.parentTargetRgb[0] = Math.min(
+          255,
+          this.parentTargetRgb[0] +
+            (255 - this.parentTargetRgb[0]) * effectiveRecharge,
+        );
+        this.parentTargetRgb[1] = Math.min(
+          255,
+          this.parentTargetRgb[1] +
+            (255 - this.parentTargetRgb[1]) * effectiveRecharge,
+        );
+        this.parentTargetRgb[2] = Math.min(
+          255,
+          this.parentTargetRgb[2] +
+            (255 - this.parentTargetRgb[2]) * effectiveRecharge,
+        );
 
-        // 現在色 (parentCurrentRgb) が目標色へ向かって滑らかにイージング追従 (lerp)
-        this.parentCurrentRgb[0] +=
-          (this.parentTargetRgb[0] - this.parentCurrentRgb[0]) * colorSmoothing;
-        this.parentCurrentRgb[1] +=
-          (this.parentTargetRgb[1] - this.parentCurrentRgb[1]) * colorSmoothing;
-        this.parentCurrentRgb[2] +=
-          (this.parentTargetRgb[2] - this.parentCurrentRgb[2]) * colorSmoothing;
+        this.parentCurrentRgb[0] = this.parentTargetRgb[0];
+        this.parentCurrentRgb[1] = this.parentTargetRgb[1];
+        this.parentCurrentRgb[2] = this.parentTargetRgb[2];
       } else {
         // 目標インク (parentTargetCmy) を満タン [1.0, 1.0, 1.0] (漆黒) へ向かって充填
-        this.parentTargetCmy[0] +=
-          (1.0 - this.parentTargetCmy[0]) * effectiveRecharge;
-        this.parentTargetCmy[1] +=
-          (1.0 - this.parentTargetCmy[1]) * effectiveRecharge;
-        this.parentTargetCmy[2] +=
-          (1.0 - this.parentTargetCmy[2]) * effectiveRecharge;
+        this.parentTargetCmy[0] = Math.min(
+          1.0,
+          this.parentTargetCmy[0] +
+            (1.0 - this.parentTargetCmy[0]) * effectiveRecharge,
+        );
+        this.parentTargetCmy[1] = Math.min(
+          1.0,
+          this.parentTargetCmy[1] +
+            (1.0 - this.parentTargetCmy[1]) * effectiveRecharge,
+        );
+        this.parentTargetCmy[2] = Math.min(
+          1.0,
+          this.parentTargetCmy[2] +
+            (1.0 - this.parentTargetCmy[2]) * effectiveRecharge,
+        );
 
-        // 現在インク (parentCurrentCmy) が目標インクへ向かって滑らかにイージング追従 (lerp)
-        this.parentCurrentCmy[0] +=
-          (this.parentTargetCmy[0] - this.parentCurrentCmy[0]) * colorSmoothing;
-        this.parentCurrentCmy[1] +=
-          (this.parentTargetCmy[1] - this.parentCurrentCmy[1]) * colorSmoothing;
-        this.parentCurrentCmy[2] +=
-          (this.parentTargetCmy[2] - this.parentCurrentCmy[2]) * colorSmoothing;
+        this.parentCurrentCmy[0] = this.parentTargetCmy[0];
+        this.parentCurrentCmy[1] = this.parentTargetCmy[1];
+        this.parentCurrentCmy[2] = this.parentTargetCmy[2];
       }
     }
 
@@ -408,46 +417,53 @@ export class DeflatingSphereSimulation {
       const emittedRgb = chosenColor.rgb;
 
       if (params.colorMixingMode === "rgb_additive") {
-        // 【真の光の減算】:
-        // 現在の親円の色 (parentCurrentRgb) から、実際に放出された光のエネルギーを引き算！
-        // ・完全充填 (白 [255,255,255]) なら、黄色 [250, 204, 21] が出ると RとGが抜け、青 [35, 75, 245] が残る！
-        // ・まだ完全充填されておらず途中状態なら、現在の親円の色からさらに引かれてより純粋なディープカラーへと深化する！
-        const drainStrength = 0.82;
-        const minLight = 18;
+        // 【真の光の減算 (エネルギー完全保存)】:
+        // 現在の親円の色 (parentCurrentRgb) から、放出された光のエネルギーを即座に 100% 引き算！
+        // これにより、生まれた瞬間の重なり領域は「親円(新) + 子円(放出した光) = 放出前の親円」が厳密に成立し、チカつきがゼロになる！
         this.parentTargetRgb[0] = Math.max(
-          minLight,
-          this.parentCurrentRgb[0] - emittedRgb[0] * drainStrength,
+          0,
+          this.parentCurrentRgb[0] - emittedRgb[0],
         );
         this.parentTargetRgb[1] = Math.max(
-          minLight,
-          this.parentCurrentRgb[1] - emittedRgb[1] * drainStrength,
+          0,
+          this.parentCurrentRgb[1] - emittedRgb[1],
         );
         this.parentTargetRgb[2] = Math.max(
-          minLight,
-          this.parentCurrentRgb[2] - emittedRgb[2] * drainStrength,
+          0,
+          this.parentCurrentRgb[2] - emittedRgb[2],
         );
+
+        this.parentCurrentRgb[0] = this.parentTargetRgb[0];
+        this.parentCurrentRgb[1] = this.parentTargetRgb[1];
+        this.parentCurrentRgb[2] = this.parentTargetRgb[2];
       } else {
-        // 【真の色の減算 (インク)】:
-        // 放出された色の補色インクが、親円の現在のインク濃度 (parentCurrentCmy) から抜け出る！
-        // 例: 黄色 (R,G大、B小) のインクが出ると -> イエローインクが抜け、親に残るのは青 (C+M)！
+        // 【真の色の減算 (インク完全保存)】:
+        // 放出された色の CMY インク成分 (0.0〜1.0) を正しく算出して親円から即座に引き算！
+        // シアン(C) = 1-R, マゼンタ(M) = 1-G, イエロー(Y) = 1-B
         const emittedR = emittedRgb[0] / 255;
         const emittedG = emittedRgb[1] / 255;
         const emittedB = emittedRgb[2] / 255;
 
-        const inkDrainStrength = 0.82;
-        const minInk = 0.05;
+        const emittedCyan = 1.0 - emittedR;
+        const emittedMagenta = 1.0 - emittedG;
+        const emittedYellow = 1.0 - emittedB;
+
         this.parentTargetCmy[0] = Math.max(
-          minInk,
-          this.parentCurrentCmy[0] - emittedR * inkDrainStrength,
+          0.0,
+          this.parentCurrentCmy[0] - emittedCyan,
         );
         this.parentTargetCmy[1] = Math.max(
-          minInk,
-          this.parentCurrentCmy[1] - emittedG * inkDrainStrength,
+          0.0,
+          this.parentCurrentCmy[1] - emittedMagenta,
         );
         this.parentTargetCmy[2] = Math.max(
-          minInk,
-          this.parentCurrentCmy[2] - emittedB * inkDrainStrength,
+          0.0,
+          this.parentCurrentCmy[2] - emittedYellow,
         );
+
+        this.parentCurrentCmy[0] = this.parentTargetCmy[0];
+        this.parentCurrentCmy[1] = this.parentTargetCmy[1];
+        this.parentCurrentCmy[2] = this.parentTargetCmy[2];
       }
     } else {
       const availableColors = getAvailableObjectColors(params, palettes);
@@ -517,6 +533,20 @@ export class DeflatingSphereSimulation {
           this.parentShrinkOffset,
       );
 
+    // 三原色混色システム用のブレンドモード設定
+    const isColorMixing = Boolean(params.enableColorMixingSystem);
+    const targetAny = target as any;
+
+    if (isColorMixing) {
+      if (params.colorMixingMode === "rgb_additive") {
+        // 光の三原色: 加算合成 (ADD / 'lighter')
+        target.blendMode(targetAny.ADD ?? "lighter");
+      } else {
+        // 色の三原色: 乗算合成 (MULTIPLY / 'multiply')
+        target.blendMode(targetAny.MULTIPLY ?? "multiply");
+      }
+    }
+
     // 子円の描画
     for (const circle of this.circles) {
       circle.renderToTarget(target, params, scaleMultiplier);
@@ -532,6 +562,11 @@ export class DeflatingSphereSimulation {
       palettes,
       scaleMultiplier,
     );
+
+    // ブレンドモードを確実に通常 (BLEND / 'source-over') に復帰 (グレイン等の後続エフェクトへの干渉を完全防止)
+    if (isColorMixing) {
+      target.blendMode(targetAny.BLEND ?? "source-over");
+    }
   }
 
   /**
@@ -557,17 +592,15 @@ export class DeflatingSphereSimulation {
         green = Math.round(this.parentCurrentRgb[1]);
         blue = Math.round(this.parentCurrentRgb[2]);
       } else {
-        // CMYインク濃度 (0.0〜1.0) から表示RGBを算出
-        const inkMin = 20;
-        const inkMax = 245;
+        // CMYインク濃度 (0.0〜1.0) から表示RGBを算出 (白背景上での純粋な減算)
         red = Math.round(
-          inkMin + (1.0 - this.parentCurrentCmy[0]) * (inkMax - inkMin),
+          (1.0 - Math.min(1.0, Math.max(0.0, this.parentCurrentCmy[0]))) * 255,
         );
         green = Math.round(
-          inkMin + (1.0 - this.parentCurrentCmy[1]) * (inkMax - inkMin),
+          (1.0 - Math.min(1.0, Math.max(0.0, this.parentCurrentCmy[1]))) * 255,
         );
         blue = Math.round(
-          inkMin + (1.0 - this.parentCurrentCmy[2]) * (inkMax - inkMin),
+          (1.0 - Math.min(1.0, Math.max(0.0, this.parentCurrentCmy[2]))) * 255,
         );
       }
     } else {
@@ -583,9 +616,9 @@ export class DeflatingSphereSimulation {
       blue = rgbValues[2];
     }
 
-    // 三原色の混色・減算モード時は透過度を低めに調整して色の重なりを美しく見せる
+    // 三原色の混色モード時は背景を透かさず完全ソリッド(1.0)で描画 (背景の透けによるチカつきを完全防止)
     const opacity = params.enableColorMixingSystem
-      ? Math.min(params.circleOpacity, 0.75)
+      ? 1.0
       : params.circleOpacity;
 
     // 1. ボケ光量・グローエフェクト (Opt-in)

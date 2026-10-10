@@ -256,12 +256,10 @@ export class OrganicDeflatingCircle {
 
       // 風船（円本体）のソリッド描画
       target.noStroke();
-      target.fill(
-        redComponent,
-        greenComponent,
-        blueComponent,
-        Math.round(255 * opacityMultiplier),
-      );
+      const childAlpha = parameters.enableColorMixingSystem
+        ? 255
+        : Math.round(255 * opacityMultiplier);
+      target.fill(redComponent, greenComponent, blueComponent, childAlpha);
       target.circle(drawPositionX, drawPositionY, drawRadius * 2);
 
       // 反射ハイライトエフェクト (Opt-in)

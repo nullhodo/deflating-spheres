@@ -385,11 +385,11 @@ export const ColorPaletteSection: React.FC<Props> = ({
                 // 三原色システムON時は縮小係数を0、不透明度を0.7 (透過混色) に設定
                 onParamChange("deflationShrinkFactor", 0);
                 onParamChange("circleOpacity", 0.7);
-                // 光の三原色なら黒背景、色の三原色なら白背景に自動設定
+                // 光の三原色なら純黒背景 (#000000)、色の三原色なら白背景 (#ffffff) に自動設定
                 const targetBg =
                   params.colorMixingMode === "cmy_subtractive"
                     ? "#ffffff"
-                    : "#0a0a0c";
+                    : "#000000";
                 onParamChange("backgroundColorIndex", -1);
                 onParamChange("manualBackgroundColor", targetBg);
                 onParamChange("backgroundColor", targetBg);
@@ -411,10 +411,10 @@ export const ColorPaletteSection: React.FC<Props> = ({
                   type="button"
                   onClick={() => {
                     onParamChange("colorMixingMode", "rgb_additive");
-                    // 光の三原色は黒背景に自動設定
+                    // 光の三原色は純黒背景に自動設定
                     onParamChange("backgroundColorIndex", -1);
-                    onParamChange("manualBackgroundColor", "#0a0a0c");
-                    onParamChange("backgroundColor", "#0a0a0c");
+                    onParamChange("manualBackgroundColor", "#000000");
+                    onParamChange("backgroundColor", "#000000");
                   }}
                   className={`py-1 px-2 rounded text-[11px] font-medium border text-center transition cursor-pointer ${
                     params.colorMixingMode === "rgb_additive"
