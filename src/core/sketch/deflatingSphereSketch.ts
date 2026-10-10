@@ -236,13 +236,23 @@ export class DeflatingSphereSimulation {
     }
 
     // 4. 子円の放出判定
+    // スライダ変更時に次回目標フレーム数が即座に追従するよう上限調整
+    const maxAllowedInterval = Math.round(
+      params.emissionIntervalFrames * (1.0 + params.emissionJitterFactor),
+    );
+    if (this.nextEmissionTargetFrames > maxAllowedInterval) {
+      this.nextEmissionTargetFrames = maxAllowedInterval;
+    }
+
     this.frameEmissionCounter++;
     let shouldEmit =
       this.frameEmissionCounter >= this.nextEmissionTargetFrames;
 
     // アイデア①: 内圧超過による確率的放出（自律平衡フィードバック）
-    // 基準より大きく膨らんでいる場合、閾値超過分に応じた確率で放出を促進
+    // ※三原色モード時は縮小係数が0のため内圧が減衰せず常時発火してしまうのを防ぎ、
+    // 通常モードかつ有機成長ONのときのみ発火させる
     if (
+      !params.enableColorMixingSystem &&
       !shouldEmit &&
       params.enableOrganicParentGrowth &&
       this.frameEmissionCounter >= 6
