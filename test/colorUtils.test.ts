@@ -49,6 +49,7 @@ const createMockParams = (
     parentGrowthRate: 0.25,
     deflationShrinkFactor: 0.45,
     deflationDurationFactor: 1.0,
+    deflationTriggerTiming: 0.7,
     enableBreathingPulse: false,
     enableReflectionHighlight: false,
     enableGlowBokeh: false,

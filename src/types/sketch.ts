@@ -56,6 +56,7 @@ export interface SketchParameters {
   parentGrowthRate: number;
   deflationShrinkFactor: number;
   deflationDurationFactor: number;
+  deflationTriggerTiming: number;
 
   // Opt-in Visual Effects (Default OFF)
   enableBreathingPulse: boolean;

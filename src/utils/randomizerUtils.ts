@@ -107,6 +107,7 @@ export function buildRandomizedParameters(
     next.parentGrowthRate = Number(randRange(0.1, 0.45).toFixed(2));
     next.deflationShrinkFactor = Number(randRange(0.1, 0.35).toFixed(2));
     next.deflationDurationFactor = Number(randRange(0.6, 2.0).toFixed(2));
+    next.deflationTriggerTiming = Number(randRange(0.4, 1.1).toFixed(2));
   }
 
   // Deflating Spheres: Opt-in Effects

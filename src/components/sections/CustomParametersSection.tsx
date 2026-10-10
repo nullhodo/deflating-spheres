@@ -371,6 +371,36 @@ export const CustomParametersSection: React.FC<Props> = ({
                   className="w-full accent-emerald-600 h-1 bg-gray-200 rounded-lg cursor-pointer"
                 />
               </div>
+
+              {/* 収縮開始タイミング (フチ到達基準) */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px] text-gray-600">
+                  <span>収縮開始のタイミング</span>
+                  <span className="font-mono text-gray-900 font-semibold">
+                    {Math.round(params.deflationTriggerTiming * 100)} %
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.0}
+                  max={1.5}
+                  step={0.05}
+                  value={params.deflationTriggerTiming}
+                  onChange={(e) =>
+                    onParamChange(
+                      "deflationTriggerTiming",
+                      Number(e.target.value),
+                    )
+                  }
+                  className="w-full accent-emerald-600 h-1 bg-gray-200 rounded-lg cursor-pointer"
+                />
+                <div className="flex justify-between text-[9px] text-gray-600 px-0.5">
+                  <span>0%:即時</span>
+                  <span>70%:先端接触</span>
+                  <span>100%:フチ通過</span>
+                  <span>130%:分離</span>
+                </div>
+              </div>
             </div>
           )}
         </div>

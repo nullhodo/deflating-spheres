@@ -185,8 +185,14 @@ export class DeflatingSphereSimulation {
         const dy = circle.currentPositionY - centerY;
         const distFromCenter = Math.hypot(dx, dy);
 
-        // 子円の中心が親円のフチ（外周）を跨いだ瞬間に収縮を発火
-        if (distFromCenter >= currentParentRadius) {
+        // 収縮トリガー判定: deflationTriggerTiming (0.0: 中心即時 〜 0.7: 先端接触 〜 1.0: 中心通過 〜 1.3: 完全離脱)
+        const triggerFactor = Math.max(
+          0.0,
+          params.deflationTriggerTiming ?? 0.7,
+        );
+        const triggerThreshold = currentParentRadius * triggerFactor;
+
+        if (distFromCenter >= triggerThreshold) {
           circle.hasTriggeredParentDeflation = true;
 
           const totalShrink =

@@ -629,6 +629,7 @@ export const DEFAULT_SKETCH_PARAMETERS: SketchParameters = {
   parentGrowthRate: 0.15,
   deflationShrinkFactor: 0.25,
   deflationDurationFactor: 1.4,
+  deflationTriggerTiming: 0.7,
 
   // Opt-in Visual Effects (Default OFF)
   enableBreathingPulse: false,

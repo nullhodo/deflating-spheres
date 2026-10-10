@@ -46,6 +46,7 @@ const createParams = (
     parentGrowthRate: 0.5,
     deflationShrinkFactor: 0.5,
     deflationDurationFactor: 1.0,
+    deflationTriggerTiming: 0.7,
     enableBreathingPulse: false,
     enableReflectionHighlight: false,
     enableGlowBokeh: false,
@@ -205,5 +206,34 @@ describe("DeflatingSphereSimulation - New Organic Features", () => {
     expect(Math.abs(simFast.parentShrinkOffset)).toBeLessThan(
       Math.abs(simSlow.parentShrinkOffset),
     );
+  });
+
+  it("triggers deflation earlier when deflationTriggerTiming is smaller", () => {
+    const simEarly = new DeflatingSphereSimulation();
+    const simLate = new DeflatingSphereSimulation();
+
+    const earlyParams = createParams({
+      deflationTriggerTiming: 0.1, // Trigger almost immediately
+      emissionIntervalFrames: 5,
+      initialVelocity: 5.0,
+    });
+    const lateParams = createParams({
+      deflationTriggerTiming: 1.2, // Trigger only after fully exiting perimeter
+      emissionIntervalFrames: 5,
+      initialVelocity: 5.0,
+    });
+
+    // Run until emission at frame 5 + 3 frames (total 8 frames)
+    for (let i = 0; i < 8; i++) {
+      simEarly.update(earlyParams, 800, 600, () => 0.5, mockPalettes);
+      simLate.update(lateParams, 800, 600, () => 0.5, mockPalettes);
+    }
+
+    expect(simEarly.circles.length).toBe(1);
+    expect(simLate.circles.length).toBe(1);
+
+    // Early trigger has already fired, while late trigger has not yet
+    expect(simEarly.circles[0].hasTriggeredParentDeflation).toBe(true);
+    expect(simLate.circles[0].hasTriggeredParentDeflation).toBe(false);
   });
 });
