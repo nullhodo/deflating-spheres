@@ -1,5 +1,9 @@
 import type p5 from "p5";
-import type { ColorItem, Palette, SketchParameters } from "../../types/sketch";
+import type {
+  ColorItem,
+  Palette,
+  SketchParameters,
+} from "../../types/sketch";
 import { getAvailableObjectColors } from "../../utils/colorUtils";
 import { OrganicDeflatingCircle } from "./OrganicDeflatingCircle";
 
@@ -15,7 +19,7 @@ function generateRandomSpectrumColor(): ColorItem {
   const hue = Math.random() * 360;
   // 目に優しい上品で澄んだ彩度 (68%〜82%) と明るさ (90%〜96%)
   const saturation = 0.68 + Math.random() * 0.14;
-  const value = 0.90 + Math.random() * 0.06;
+  const value = 0.9 + Math.random() * 0.06;
 
   const c = value * saturation;
   const x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
@@ -412,53 +416,169 @@ export class DeflatingSphereSimulation {
     let chosenColor: ColorItem;
 
     if (params.enableColorMixingSystem) {
-      // 1. レパートリー固定を撤廃: 0〜360度の全色相からランダムかつ鮮やかな光/色を生成
-      chosenColor = generateRandomSpectrumColor();
-      const emittedRgb = chosenColor.rgb;
+      const baseColor = generateRandomSpectrumColor();
+      const baseRgb = baseColor.rgb;
+      const toHex = (n: number) =>
+        Math.max(0, Math.min(255, Math.round(n)))
+          .toString(16)
+          .padStart(2, "0");
 
       if (params.colorMixingMode === "rgb_additive") {
-        // 【真の光の減算 (エネルギー完全保存)】:
-        // 現在の親円の色 (parentCurrentRgb) から、放出された光のエネルギーを即座に 100% 引き算！
-        // これにより、生まれた瞬間の重なり領域は「親円(新) + 子円(放出した光) = 放出前の親円」が厳密に成立し、チカつきがゼロになる！
-        this.parentTargetRgb[0] = Math.max(
+        // 【光の三原色: エネルギー完全保存則】
+        // 親円が現在保持している光エネルギーの割合に応じて子円の色を決定
+        // これにより、親円がリチャージ途中でも「持っていない光を勝手に吐き出す」破綻を防ぎ、
+        // 「親円(残った光) + 子円(放出した光) = 放出前の親円」が 100% 成立してチカつきがゼロになる！
+        const rRatio = Math.max(
           0,
-          this.parentCurrentRgb[0] - emittedRgb[0],
+          Math.min(1, this.parentCurrentRgb[0] / 255),
         );
-        this.parentTargetRgb[1] = Math.max(
+        const gRatio = Math.max(
           0,
-          this.parentCurrentRgb[1] - emittedRgb[1],
+          Math.min(1, this.parentCurrentRgb[1] / 255),
         );
-        this.parentTargetRgb[2] = Math.max(
+        const bRatio = Math.max(
           0,
-          this.parentCurrentRgb[2] - emittedRgb[2],
+          Math.min(1, this.parentCurrentRgb[2] / 255),
         );
+
+        const emittedR = Math.min(
+          this.parentCurrentRgb[0],
+          Math.round(baseRgb[0] * rRatio),
+        );
+        const emittedG = Math.min(
+          this.parentCurrentRgb[1],
+          Math.round(baseRgb[1] * gRatio),
+        );
+        const emittedB = Math.min(
+          this.parentCurrentRgb[2],
+          Math.round(baseRgb[2] * bRatio),
+        );
+
+        chosenColor = {
+          name: baseColor.name,
+          hex: `#${toHex(emittedR)}${toHex(emittedG)}${toHex(emittedB)}`,
+          rgb: [emittedR, emittedG, emittedB],
+        };
+
+        // 親円に残る光 = 現在の光 - 放出した光 (厳密に >= 0)
+        this.parentTargetRgb[0] = this.parentCurrentRgb[0] - emittedR;
+        this.parentTargetRgb[1] = this.parentCurrentRgb[1] - emittedG;
+        this.parentTargetRgb[2] = this.parentCurrentRgb[2] - emittedB;
 
         this.parentCurrentRgb[0] = this.parentTargetRgb[0];
         this.parentCurrentRgb[1] = this.parentTargetRgb[1];
         this.parentCurrentRgb[2] = this.parentTargetRgb[2];
       } else {
-        // 【真の色の減算 (インク完全保存)】:
-        // 放出された色の CMY インク成分 (0.0〜1.0) を正しく算出して親円から即座に引き算！
-        // シアン(C) = 1-R, マゼンタ(M) = 1-G, イエロー(Y) = 1-B
-        const emittedR = emittedRgb[0] / 255;
-        const emittedG = emittedRgb[1] / 255;
-        const emittedB = emittedRgb[2] / 255;
+        // 【色の三原色: 乗算合成 (減算混合) における真のエネルギー完全保存則】
+        // 白背景上では p5.js/Canvas 2D の 'multiply' (乗算合成: (Dst * Src) / 255) が適用される。
+        // 単純なインク濃度の引き算 (C_parent - C_child) では、(1-C_p)*(1-C_c) != 1-(C_p+C_c) となり
+        // 重なり領域が一瞬大幅に白く明るく跳ね上がってしまう (チカつきの原因)。
+        // したがって、乗算合成後のピクセル値が放出前の親円ピクセル色と 100% 一致するように
+        // 親円に残す表示RGBを (R_before * 255) / R_child として厳密に逆算する！
+        const rBefore = Math.round((1.0 - this.parentCurrentCmy[0]) * 255);
+        const gBefore = Math.round((1.0 - this.parentCurrentCmy[1]) * 255);
+        const bBefore = Math.round((1.0 - this.parentCurrentCmy[2]) * 255);
 
-        const emittedCyan = 1.0 - emittedR;
-        const emittedMagenta = 1.0 - emittedG;
-        const emittedYellow = 1.0 - emittedB;
+        const baseCyan = (255 - baseRgb[0]) / 255;
+        const baseMagenta = (255 - baseRgb[1]) / 255;
+        const baseYellow = (255 - baseRgb[2]) / 255;
 
+        // 親円のインク残量に応じて子円のインクを決定 (親円より濃いインクは出せない)
+        const emittedCyan = Math.min(
+          this.parentCurrentCmy[0],
+          baseCyan * this.parentCurrentCmy[0],
+        );
+        const emittedMagenta = Math.min(
+          this.parentCurrentCmy[1],
+          baseMagenta * this.parentCurrentCmy[1],
+        );
+        const emittedYellow = Math.min(
+          this.parentCurrentCmy[2],
+          baseYellow * this.parentCurrentCmy[2],
+        );
+
+        // 子円のRGB (ゼロ除算防止で最小値1)
+        const emittedR = Math.max(
+          1,
+          Math.round((1.0 - emittedCyan) * 255),
+        );
+        const emittedG = Math.max(
+          1,
+          Math.round((1.0 - emittedMagenta) * 255),
+        );
+        const emittedB = Math.max(
+          1,
+          Math.round((1.0 - emittedYellow) * 255),
+        );
+
+        chosenColor = {
+          name: baseColor.name,
+          hex: `#${toHex(emittedR)}${toHex(emittedG)}${toHex(emittedB)}`,
+          rgb: [emittedR, emittedG, emittedB],
+        };
+
+        // 親円に残る色:
+        // スライダで設定された不透明度 (circleOpacity) を完全に考慮して逆算！
+        // 白背景 (255) 上でアルファブレンドされた実効表示色において
+        // 放出前後で中心ピクセル値が 100% 一致するように親円の色を決定する
+        const alpha = Math.max(0.01, Math.min(1.0, params.circleOpacity));
+
+        // 放出前の画面ピクセル色 (白背景 255 とのアルファブレンド)
+        const cBeforeR = Math.round((1 - alpha) * 255 + alpha * rBefore);
+        const cBeforeG = Math.round((1 - alpha) * 255 + alpha * gBefore);
+        const cBeforeB = Math.round((1 - alpha) * 255 + alpha * bBefore);
+
+        // 子円が白背景に描画された後の実効ピクセル色
+        const cChildEffR = Math.round(
+          (1 - alpha) * 255 + alpha * emittedR,
+        );
+        const cChildEffG = Math.round(
+          (1 - alpha) * 255 + alpha * emittedG,
+        );
+        const cChildEffB = Math.round(
+          (1 - alpha) * 255 + alpha * emittedB,
+        );
+
+        // チカつきゼロのための親円の実効乗数 Mp
+        const mpR = Math.min(
+          255,
+          Math.round((cBeforeR * 255) / Math.max(1, cChildEffR)),
+        );
+        const mpG = Math.min(
+          255,
+          Math.round((cBeforeG * 255) / Math.max(1, cChildEffG)),
+        );
+        const mpB = Math.min(
+          255,
+          Math.round((cBeforeB * 255) / Math.max(1, cChildEffB)),
+        );
+
+        // 親円本体の色 parentNewR を逆算 (0〜255)
+        const parentNewR = Math.max(
+          0,
+          Math.min(255, Math.round((mpR - (1 - alpha) * 255) / alpha)),
+        );
+        const parentNewG = Math.max(
+          0,
+          Math.min(255, Math.round((mpG - (1 - alpha) * 255) / alpha)),
+        );
+        const parentNewB = Math.max(
+          0,
+          Math.min(255, Math.round((mpB - (1 - alpha) * 255) / alpha)),
+        );
+
+        // 親円のCMY濃度を更新
         this.parentTargetCmy[0] = Math.max(
           0.0,
-          this.parentCurrentCmy[0] - emittedCyan,
+          Math.min(1.0, 1.0 - parentNewR / 255),
         );
         this.parentTargetCmy[1] = Math.max(
           0.0,
-          this.parentCurrentCmy[1] - emittedMagenta,
+          Math.min(1.0, 1.0 - parentNewG / 255),
         );
         this.parentTargetCmy[2] = Math.max(
           0.0,
-          this.parentCurrentCmy[2] - emittedYellow,
+          Math.min(1.0, 1.0 - parentNewB / 255),
         );
 
         this.parentCurrentCmy[0] = this.parentTargetCmy[0];
@@ -535,15 +655,23 @@ export class DeflatingSphereSimulation {
 
     // 三原色混色システム用のブレンドモード設定
     const isColorMixing = Boolean(params.enableColorMixingSystem);
-    const targetAny = target as any;
+    const p5BlendConstants = target as unknown as {
+      ADD?: p5.BLEND_MODE;
+      MULTIPLY?: p5.BLEND_MODE;
+      BLEND?: p5.BLEND_MODE;
+    };
 
     if (isColorMixing) {
       if (params.colorMixingMode === "rgb_additive") {
         // 光の三原色: 加算合成 (ADD / 'lighter')
-        target.blendMode(targetAny.ADD ?? "lighter");
+        target.blendMode(
+          p5BlendConstants.ADD ?? ("lighter" as p5.BLEND_MODE),
+        );
       } else {
         // 色の三原色: 乗算合成 (MULTIPLY / 'multiply')
-        target.blendMode(targetAny.MULTIPLY ?? "multiply");
+        target.blendMode(
+          p5BlendConstants.MULTIPLY ?? ("multiply" as p5.BLEND_MODE),
+        );
       }
     }
 
@@ -565,7 +693,9 @@ export class DeflatingSphereSimulation {
 
     // ブレンドモードを確実に通常 (BLEND / 'source-over') に復帰 (グレイン等の後続エフェクトへの干渉を完全防止)
     if (isColorMixing) {
-      target.blendMode(targetAny.BLEND ?? "source-over");
+      target.blendMode(
+        p5BlendConstants.BLEND ?? ("source-over" as p5.BLEND_MODE),
+      );
     }
   }
 
@@ -594,13 +724,16 @@ export class DeflatingSphereSimulation {
       } else {
         // CMYインク濃度 (0.0〜1.0) から表示RGBを算出 (白背景上での純粋な減算)
         red = Math.round(
-          (1.0 - Math.min(1.0, Math.max(0.0, this.parentCurrentCmy[0]))) * 255,
+          (1.0 - Math.min(1.0, Math.max(0.0, this.parentCurrentCmy[0]))) *
+            255,
         );
         green = Math.round(
-          (1.0 - Math.min(1.0, Math.max(0.0, this.parentCurrentCmy[1]))) * 255,
+          (1.0 - Math.min(1.0, Math.max(0.0, this.parentCurrentCmy[1]))) *
+            255,
         );
         blue = Math.round(
-          (1.0 - Math.min(1.0, Math.max(0.0, this.parentCurrentCmy[2]))) * 255,
+          (1.0 - Math.min(1.0, Math.max(0.0, this.parentCurrentCmy[2]))) *
+            255,
         );
       }
     } else {
@@ -616,10 +749,8 @@ export class DeflatingSphereSimulation {
       blue = rgbValues[2];
     }
 
-    // 三原色の混色モード時は背景を透かさず完全ソリッド(1.0)で描画 (背景の透けによるチカつきを完全防止)
-    const opacity = params.enableColorMixingSystem
-      ? 1.0
-      : params.circleOpacity;
+    // スライダで設定された不透明度をそのまま適用
+    const opacity = params.circleOpacity;
 
     // 1. ボケ光量・グローエフェクト (Opt-in)
     if (params.enableGlowBokeh) {

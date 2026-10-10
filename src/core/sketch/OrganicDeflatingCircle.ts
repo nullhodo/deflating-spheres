@@ -254,11 +254,9 @@ export class OrganicDeflatingCircle {
         );
       }
 
-      // 風船（円本体）のソリッド描画
+      // 風船（円本体）の描画
       target.noStroke();
-      const childAlpha = parameters.enableColorMixingSystem
-        ? 255
-        : Math.round(255 * opacityMultiplier);
+      const childAlpha = Math.round(255 * opacityMultiplier);
       target.fill(redComponent, greenComponent, blueComponent, childAlpha);
       target.circle(drawPositionX, drawPositionY, drawRadius * 2);
 
