@@ -258,6 +258,8 @@ const App: React.FC = () => {
     let currentBuffer: p5.Graphics | null = null;
     let transitionStartTime = 0;
     let lastRenderKey = "";
+    let prevParticleCount = 0;
+    let prevCenterColor: number[] = [0, 0, 0];
 
     const sketch = (p: p5) => {
       p.setup = () => {
@@ -354,6 +356,38 @@ const App: React.FC = () => {
           1.0,
           stats.currentParentRadius,
         );
+
+        // 三原色モード時の中心ピクセル色トラッキング (debugMode時のみ実測検証)
+        if (
+          currentParams.enableColorMixingSystem &&
+          currentParams.debugMode
+        ) {
+          const cx = Math.floor(width / 2);
+          const cy = Math.floor(height / 2);
+          const rawPix = currentBuffer.get(cx, cy);
+          const currentCenterColor = [rawPix[0], rawPix[1], rawPix[2]];
+
+          if (stats.activeCount > prevParticleCount) {
+            const diff = [
+              currentCenterColor[0] - prevCenterColor[0],
+              currentCenterColor[1] - prevCenterColor[1],
+              currentCenterColor[2] - prevCenterColor[2],
+            ];
+            const isFlickering =
+              Math.abs(diff[0]) > 4 ||
+              Math.abs(diff[1]) > 4 ||
+              Math.abs(diff[2]) > 4;
+            console.log(
+              `%c[ColorTracking] 子円放出検知! 放出直前: rgb(${prevCenterColor.join(",")}) -> 放出直後: rgb(${currentCenterColor.join(",")}) | 差分(Δ): [${diff.join(",")}] ${isFlickering ? "⚠️ チカつき検知!" : "✅ 変化なし (完全安定)"}`,
+              isFlickering
+                ? "color: #ef4444; font-weight: bold; font-size: 11px;"
+                : "color: #10b981; font-weight: bold; font-size: 11px;",
+            );
+          }
+
+          prevParticleCount = stats.activeCount;
+          prevCenterColor = currentCenterColor;
+        }
 
         // 3. Apply visual texture & print effects to currentBuffer
         if (currentParams.showGrain) {
