@@ -353,7 +353,7 @@ export class DeflatingSphereSimulation {
         circle.currentPositionY <= height + margin;
 
       let hasVisibleTrail = false;
-      if (!isHeadInside) {
+      if (!isHeadInside && !params.enableColorMixingSystem) {
         for (let j = 0; j < circle.positionHistory.length; j++) {
           const pt = circle.positionHistory[j];
           if (

@@ -107,7 +107,10 @@ export class OrganicDeflatingCircle {
     if (this.currentRadius < 1.2) {
       this.isHeadDeflated = true;
       this.currentRadius = 0;
-      if (this.positionHistory.length <= 1) {
+      if (
+        parameters.enableColorMixingSystem ||
+        this.positionHistory.length <= 1
+      ) {
         this.isDeflated = true;
       }
       return;
@@ -188,7 +191,12 @@ export class OrganicDeflatingCircle {
     const opacityMultiplier = parameters.circleOpacity;
 
     // 1. 軌跡ラインの描画 (トレイルが自然にフェードアウトして消散)
-    if (this.positionHistory.length > 1 && this.trailFadeAlpha > 0.01) {
+    // 三原色モード時は軌跡を描画せず、すっきりと円本体のみを描画
+    if (
+      !parameters.enableColorMixingSystem &&
+      this.positionHistory.length > 1 &&
+      this.trailFadeAlpha > 0.01
+    ) {
       target.noFill();
       for (
         let historyIndex = 1;
